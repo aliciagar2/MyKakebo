@@ -292,4 +292,5 @@ dist
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/java,maven,node,intellij+all,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/java,maven,node,intellij+all,visualstudiocode.DS_Store
+.DS_Store
