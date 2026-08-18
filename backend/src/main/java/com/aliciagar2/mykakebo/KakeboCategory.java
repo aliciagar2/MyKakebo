@@ -1,4 +1,4 @@
-package backend.src.main.java.com.aliciagar2.mykakebo;
+package com.aliciagar2.mykakebo;
 
 public enum KakeboCategory {
     SURVIVAL,   // Essential needs: rent, groceries, transportation, insurance, utilities
