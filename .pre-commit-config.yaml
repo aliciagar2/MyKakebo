@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks # scans staged changes for committed secrets/API keys
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npx eslint --max-warnings=0'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+
+      - id: checkstyle
+        name: checkstyle (Google style)
+        entry: bash -c 'cd backend && mvn -q checkstyle:check'
+        language: system
+        files: ^backend/.*\.java$
