@@ -1,4 +1,4 @@
-package com.aliciagar2.mykakebo;
+package com.aliciagar2.mykakebo.domain;
 
 public enum KakeboCategory {
     SURVIVAL,   // Essential needs: rent, groceries, transportation, insurance, utilities
