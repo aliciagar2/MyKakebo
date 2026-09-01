@@ -7,7 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MykakeboApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(MykakeboApplication.class, args);
+
+        SpringApplication.run(MykakeboApplication.class, args);
+
 	}
 
 }
