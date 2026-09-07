@@ -14,6 +14,7 @@ The repository contains the domain/aggregation slice plus a minimal Spring Boot 
 | Spring Boot application skeleton        | Implemented |
 | `/health` endpoint                      | Implemented |
 | Multi-stage Dockerfile                  | Implemented |
+| JPA persistence entities                | Implemented |
 | Persistence-backed REST API             | Planned     |
 | PostgreSQL and persistence              | Planned     |
 | React + TypeScript frontend             | Planned     |
@@ -114,7 +115,7 @@ GET /health -> 200 OK, body "OK"
 
 `HealthController` delegates to `HealthService`, injected via constructor. Both are plain Spring components with no dependency on persistence.
 
-The application declares `spring-boot-starter-data-jpa` as a dependency (needed for upcoming JPA entities), but no `DataSource` is configured yet — there is no database or set of entities in the codebase. `application.yaml` excludes JPA and DataSource autoconfiguration explicitly:
+The application declares `spring-boot-starter-data-jpa` and now includes JPA entities for expenses, monthly budgets, and monthly reflections. No `DataSource` is configured yet, so database-backed repositories and the REST API remain planned. `application.yaml` excludes JPA and DataSource autoconfiguration explicitly:
 
 ```yaml
 spring:
