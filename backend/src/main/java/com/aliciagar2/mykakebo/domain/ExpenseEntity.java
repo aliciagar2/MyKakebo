@@ -21,19 +21,19 @@ public class ExpenseEntity {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
-    @Column(nullable = false)
-    private LocalDate date;
+    @Column(name = "expense_date", nullable = false)
+    private LocalDate expenseDate;
 
     private String note;
 
     protected ExpenseEntity() {
     }
 
-    public ExpenseEntity(Long id, KakeboCategory category, BigDecimal amount, LocalDate date, String note) {
+    public ExpenseEntity(Long id, KakeboCategory category, BigDecimal amount, LocalDate expenseDate, String note) {
         this.id = id;
         this.category = category;
         this.amount = amount;
-        this.date = date;
+        this.expenseDate = expenseDate;
         this.note = note;
     }
 
@@ -61,12 +61,12 @@ public class ExpenseEntity {
         this.amount = amount;
     }
 
-    public LocalDate getDate() {
-        return date;
+    public LocalDate getExpenseDate() {
+        return expenseDate;
     }
 
-    public void setDate(LocalDate date) {
-        this.date = date;
+    public void setExpenseDate(LocalDate expenseDate) {
+        this.expenseDate = expenseDate;
     }
 
     public String getNote() {

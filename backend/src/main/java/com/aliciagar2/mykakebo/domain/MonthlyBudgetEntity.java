@@ -7,15 +7,15 @@ import java.math.BigDecimal;
 import java.time.YearMonth;
 
 @Entity
-@Table(name = "monthly_budgets", uniqueConstraints = @UniqueConstraint(columnNames = "month"))
+@Table(name = "monthly_budgets", uniqueConstraints = @UniqueConstraint(columnNames = "year_month"))
 public class MonthlyBudgetEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private YearMonth month;
+    @Column(name = "year_month", nullable = false)
+    private YearMonth yearMonth;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal income;
@@ -28,9 +28,9 @@ public class MonthlyBudgetEntity {
 
     protected MonthlyBudgetEntity() {}
 
-    public MonthlyBudgetEntity(Long id, YearMonth month, BigDecimal income, BigDecimal fixedExpenses, BigDecimal savingsGoal) {
+    public MonthlyBudgetEntity(Long id, YearMonth yearMonth, BigDecimal income, BigDecimal fixedExpenses, BigDecimal savingsGoal) {
         this.id = id;
-        this.month = month;
+        this.yearMonth = yearMonth;
         this.income = income;
         this.fixedExpenses = fixedExpenses;
         this.savingsGoal = savingsGoal;
@@ -44,12 +44,12 @@ public class MonthlyBudgetEntity {
         this.id = id;
     }
 
-    public YearMonth getMonth() {
-        return month;
+    public YearMonth getYearMonth() {
+        return yearMonth;
     }
 
-    public void setMonth(YearMonth month) {
-        this.month = month;
+    public void setYearMonth(YearMonth yearMonth) {
+        this.yearMonth = yearMonth;
     }
 
     public BigDecimal getIncome() {
