@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: mykakebo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kakebo
+    username: postgres
+    password: devpass
+  jpa:
+    hibernate:
+      ddl-auto: validate
