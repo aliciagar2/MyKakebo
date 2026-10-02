@@ -13,8 +13,8 @@ public class MonthlyReflectionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private YearMonth month;
+    @Column(name = "year_month", nullable = false)
+    private YearMonth yearMonth;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal moneyHad;
@@ -31,9 +31,9 @@ public class MonthlyReflectionEntity {
     protected MonthlyReflectionEntity() {
     }
 
-    public MonthlyReflectionEntity(Long id, YearMonth month, BigDecimal moneyHad, BigDecimal moneySaved, BigDecimal moneySpent, String improvementNote) {
+    public MonthlyReflectionEntity(Long id, YearMonth yearMonth, BigDecimal moneyHad, BigDecimal moneySaved, BigDecimal moneySpent, String improvementNote) {
         this.id = id;
-        this.month = month;
+        this.yearMonth = yearMonth;
         this.moneyHad = moneyHad;
         this.moneySaved = moneySaved;
         this.moneySpent = moneySpent;
@@ -48,12 +48,12 @@ public class MonthlyReflectionEntity {
         this.id = id;
     }
 
-    public YearMonth getMonth() {
-        return month;
+    public YearMonth getYearMonth() {
+        return yearMonth;
     }
 
-    public void setMonth(YearMonth month) {
-        this.month = month;
+    public void setYearMonth(YearMonth yearMonth) {
+        this.yearMonth = yearMonth;
     }
 
     public BigDecimal getMoneyHad() {
