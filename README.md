@@ -4,7 +4,7 @@ A framework-free Java 17 domain model and aggregation service for a personal bud
 
 ## Current status
 
-The repository contains the domain/aggregation slice plus a minimal Spring Boot application: a Maven project with Java records, one aggregation service, a health endpoint, unit tests, and a multi-stage Dockerfile. Persistence, the full REST API, and a frontend are planned but not implemented yet.
+The repository contains the domain/aggregation slice plus a Spring Boot application with a persistence layer: a Maven project with Java records, JPA entities, Flyway-migrated PostgreSQL schema, Spring Data repositories, one aggregation service, a health endpoint, unit and repository tests, a local Docker Compose database, and a multi-stage Dockerfile. The REST API and a frontend are planned but not implemented yet.
 
 | Area                                    | Status      |
 | ----------------------------------------- | ----------- |
@@ -15,8 +15,10 @@ The repository contains the domain/aggregation slice plus a minimal Spring Boot 
 | `/health` endpoint                      | Implemented |
 | Multi-stage Dockerfile                  | Implemented |
 | JPA persistence entities                | Implemented |
+| Flyway migrations + PostgreSQL datasource | Implemented |
+| Spring Data repositories                | Implemented |
+| Local PostgreSQL via Docker Compose     | Implemented |
 | Persistence-backed REST API             | Planned     |
-| PostgreSQL and persistence              | Planned     |
 | React + TypeScript frontend             | Planned     |
 | Kubernetes and CI/CD                    | Planned     |
 
@@ -115,17 +117,72 @@ GET /health -> 200 OK, body "OK"
 
 `HealthController` delegates to `HealthService`, injected via constructor. Both are plain Spring components with no dependency on persistence.
 
-The application declares `spring-boot-starter-data-jpa` and now includes JPA entities for expenses, monthly budgets, and monthly reflections. No `DataSource` is configured yet, so database-backed repositories and the REST API remain planned. `application.yaml` excludes JPA and DataSource autoconfiguration explicitly:
+The application declares `spring-boot-starter-data-jpa` and includes JPA entities for expenses, monthly budgets, and monthly reflections (`ExpenseEntity`, `MonthlyBudgetEntity`, `MonthlyReflectionEntity`), each backed by a Spring Data repository (`ExpenseRepository`, `MonthlyBudgetRepository`, `MonthlyReflectionRepository`) exposing the query methods the planned REST layer will need (date-range and category lookups, lookup by `YearMonth`, chronological ordering). A `YearMonthConverter` maps the domain's `YearMonth` to the `VARCHAR` column Flyway creates for it.
+
+Flyway owns the schema. `V1__init.sql` creates the `monthly_budgets`, `expenses`, and `monthly_reflections` tables; `V2__rename_reserved_columns.sql` renames columns that collided with reserved words (`month` → `year_month`, `date` → `expense_date`). `backend/src/main/resources/application.yml` points at a real PostgreSQL datasource and reads credentials from the environment, with no hardcoded default for the password:
 
 ```yaml
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kakebo}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
 ```
 
-This exclusion is temporary and will be removed once JPA entities and a PostgreSQL `DataSource` are added. An in-memory H2 database is present as a `test`-scoped dependency, used only so the Spring context can boot during `mvn test`; it is not present on the runtime classpath and is not a substitute for the PostgreSQL integration tests planned later with Testcontainers.
+`ddl-auto: validate` means Hibernate checks the JPA mappings against whatever schema Flyway has already applied at startup — it never generates or alters tables itself. See [Local PostgreSQL (Docker Compose)](#local-postgresql-docker-compose) below for how `DB_USERNAME`/`DB_PASSWORD` are supplied locally.
+
+Tests use a separate `backend/src/test/resources/application.yml`, pointing at an in-memory H2 database in PostgreSQL compatibility mode, with Flyway disabled and `ddl-auto: create-drop` so each test run gets a fresh schema generated straight from the JPA mappings:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+```
+
+The three repository test classes (`ExpenseRepositoryTest`, `MonthlyBudgetRepositoryTest`, `MonthlyReflectionRepositoryTest`) use `@DataJpaTest`, which runs each test method in its own transaction and rolls it back afterward — fixtures inserted in one test never leak into the next. H2 is a `test`-scoped dependency only; it is not on the runtime classpath and is not a substitute for the PostgreSQL integration tests planned later with Testcontainers.
+
+### Local PostgreSQL (Docker Compose)
+
+`docker-compose.yml` at the repo root starts a PostgreSQL 16 container matching the datasource above, with a healthcheck and a named volume for persistence across restarts:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kakebo
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+```
+
+Neither the app nor Compose hardcodes a password: both read `DB_USERNAME`/`DB_PASSWORD` from a `.env` file at the repo root, which is gitignored. Set it up once:
+
+```bash
+cp .env.example .env   # then edit .env with a local password of your choice
+```
+
+Start the database:
+
+```bash
+docker compose up -d postgres
+```
+
+Docker Compose automatically loads `.env` from the same directory as `docker-compose.yml`. Stop it with `docker compose down` (add `-v` to also drop the `postgres-data` volume and start from an empty database next time).
 
 ### Dockerfile
 
@@ -140,6 +197,8 @@ The image listens on port `8080`.
 
 ```text
 MyKakebo/
+├── docker-compose.yml        # Local PostgreSQL for development
+├── .env.example              # Template for DB_USERNAME / DB_PASSWORD
 ├── backend/
 │   ├── pom.xml
 │   ├── Dockerfile
@@ -147,12 +206,16 @@ MyKakebo/
 │   └── src/
 │       ├── main/java/com/aliciagar2/mykakebo/
 │       │   ├── MykakeboApplication.java
-│       │   ├── domain/       # Budget, expense, user, category, reflection records
+│       │   ├── domain/       # Budget/expense/reflection records, JPA entities, YearMonthConverter
+│       │   ├── repository/   # ExpenseRepository, MonthlyBudgetRepository, MonthlyReflectionRepository
 │       │   ├── service/      # SummaryService, HealthService
 │       │   └── web/          # HealthController
 │       ├── main/resources/
-│       │   └── application.yaml
-│       └── test/java/...     # SummaryServiceTest, MykakeboApplicationTests
+│       │   ├── application.yml
+│       │   └── db/migration/ # Flyway: V1__init.sql, V2__rename_reserved_columns.sql
+│       └── test/
+│           ├── resources/application.yml   # H2, Flyway disabled
+│           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test
 ├── algorithms/               # Weekly DSA practice, see algorithms/README.md
 ├── frontend/                 # Reserved for the future React client
 └── k8s/                      # Reserved for future deployment manifests
@@ -182,9 +245,10 @@ GET    /api/months/history
 
 - Java 17 or newer
 - The bundled Maven wrapper (`./mvnw`) — no separate Maven install required
-- Docker, to build and run the container image
+- Docker and Docker Compose, to run a local PostgreSQL instance and to build/run the container image
+- Node.js is not required for anything currently in the repository
 
-No database, Node.js installation, or external service is required for the current test suite or for running the application locally.
+The test suite needs none of the above database setup — it runs entirely against an in-memory H2 database (see [Spring Boot application](#spring-boot-application)). Running the application itself does require PostgreSQL, started locally via Docker Compose.
 
 ## Run the tests
 
@@ -195,16 +259,29 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 11, Failures: 0, Errors: 0`. Ten tests cover category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations. The eleventh (`MykakeboApplicationTests`) confirms the Spring application context loads, using the H2 in-memory database described above.
+Expected result: `Tests run: 20, Failures: 0, Errors: 0`.
+
+- `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
+- `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
+- `ExpenseRepositoryTest`, `MonthlyBudgetRepositoryTest`, and `MonthlyReflectionRepositoryTest` (3 tests each, 9 total) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback.
 
 ## Run the application
 
-Locally, without Docker:
+Start PostgreSQL first (see [Local PostgreSQL (Docker Compose)](#local-postgresql-docker-compose) for first-time `.env` setup):
+
+```bash
+docker compose up -d postgres
+```
+
+Then, locally without Docker for the app itself:
 
 ```bash
 cd backend
+set -a && source ../.env && set +a
 ./mvnw spring-boot:run
 ```
+
+`source ../.env` combined with `set -a`/`set +a` exports `DB_USERNAME`/`DB_PASSWORD` into the shell so Spring Boot's property placeholders (`${DB_USERNAME}`, `${DB_PASSWORD}`) resolve; without it, startup fails fast because the password has no default. Flyway applies its migrations against the running container automatically on startup.
 
 Then, in a separate terminal:
 
@@ -216,10 +293,16 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 
 ## Build and run the Docker image
 
+PostgreSQL must already be running (`docker compose up -d postgres`). The app container needs `DB_PASSWORD` and a URL that reaches the host's Postgres from inside the container — on Docker Desktop (macOS/Windows), that's `host.docker.internal`:
+
 ```bash
 cd backend
 docker build -t kakebo-backend:local .
-docker run -p 8080:8080 kakebo-backend:local
+docker run -p 8080:8080 \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/kakebo \
+  -e DB_USERNAME=postgres \
+  -e DB_PASSWORD=$(grep DB_PASSWORD ../.env | cut -d= -f2) \
+  kakebo-backend:local
 ```
 
 Then, in a separate terminal, the same check as above:
@@ -233,7 +316,7 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 ## Roadmap
 
 1. ~~Add Spring Boot configuration and application entry point.~~ Done.
-2. Add JPA entities, Flyway migrations, and a PostgreSQL `DataSource`; remove the temporary autoconfiguration exclusion.
+2. ~~Add JPA entities, Flyway migrations, and a PostgreSQL `DataSource`.~~ Done.
 3. Expose budget, expense, summary, reflection, and authentication REST endpoints.
 4. Add the React + TypeScript client.
 5. Add k3s manifests, CI/CD, and integration tests.
