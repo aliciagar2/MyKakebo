@@ -5,6 +5,7 @@ import com.aliciagar2.mykakebo.repository.MonthlyBudgetRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -108,6 +109,28 @@ class MonthlyBudgetControllerTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.availableToSpend").value(-30.00));
+    }
+
+    @Test
+    void getReturns400ForInvalidMonth() throws Exception {
+        mockMvc.perform(get("/api/months/2026/13/budget"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(monthlyBudgetRepository);
+    }
+
+    @Test
+    void createReturns400ForInvalidMonth() throws Exception {
+        String body = """
+                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/0/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(monthlyBudgetRepository);
     }
 
     @Test

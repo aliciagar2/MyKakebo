@@ -120,7 +120,7 @@ class ExpenseControllerTest {
     @Test
     void listReturnsEmptyArrayWhenNoExpensesInMonth() throws Exception {
         LocalDate start = LocalDate.of(2026, 2, 1);
-        LocalDate end = LocalDate.of(2026, 2, 29);
+        LocalDate end = LocalDate.of(2026, 2, 28);
         when(expenseRepository.findByExpenseDateBetween(start, end)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/months/2026/2/expenses"))
@@ -193,6 +193,22 @@ class ExpenseControllerTest {
     void listIgnoresUnknownCategoryValueAsBadRequest() throws Exception {
         mockMvc.perform(get("/api/months/2026/1/expenses").param("category", "NOT_A_CATEGORY"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listReturns400ForInvalidMonth() throws Exception {
+        mockMvc.perform(get("/api/months/2026/13/expenses"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(expenseRepository);
+    }
+
+    @Test
+    void listReturns400ForZeroMonth() throws Exception {
+        mockMvc.perform(get("/api/months/2026/0/expenses"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(expenseRepository);
     }
 
 
