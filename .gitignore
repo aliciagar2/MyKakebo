@@ -293,4 +293,7 @@ dist
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/java,maven,node,intellij+all,visualstudiocode.DS_Store
+
+# Local-only notes, reviews, and scratch output (never shipped or shared)
+notes/
 .DS_Store
