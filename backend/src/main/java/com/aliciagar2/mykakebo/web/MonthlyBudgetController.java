@@ -48,7 +48,14 @@ public class MonthlyBudgetController {
         MonthlyBudgetEntity entity = new MonthlyBudgetEntity(
                 null, yearMonth, request.income(), request.fixedExpenses(), request.savingsGoal());
 
-        return toResponse(budgetRepository.save(entity));
+        try {
+            return toResponse(budgetRepository.save(entity));
+        } catch (DataIntegrityViolationException e) {
+            // A concurrent request may have created the budget between the findByYearMonth
+            // check above and this save; the unique constraint on year_month is the real
+            // guard, so translate its violation into the same 409 the check-based path returns.
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Budget already set for " + yearMonth, e);
+        }
     }
 
     private MonthlyBudgetResponse toResponse(MonthlyBudgetEntity monthlyBudgetEntity) {

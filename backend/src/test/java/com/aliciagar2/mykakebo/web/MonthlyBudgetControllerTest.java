@@ -142,6 +142,25 @@ class MonthlyBudgetControllerTest {
     }
 
     @Test
+    void createReturns409WhenConcurrentRequestWinsTheRace() throws Exception {
+        // findByYearMonth passes (no budget yet), but a concurrent request inserts first,
+        // so save() hits the year_month unique constraint. Should still surface as 409, not 500.
+        YearMonth ym = YearMonth.of(2026, 7);
+        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
+        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        String body = """
+                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/7/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void createReturns409WhenBudgetAlreadyExistsForMonth() throws Exception {
         YearMonth ym = YearMonth.of(2026, 1);
         when(monthlyBudgetRepository.findByYearMonth(ym))
