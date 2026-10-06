@@ -5,18 +5,24 @@ import com.aliciagar2.mykakebo.domain.KakeboCategory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 class ExpenseRepositoryTest {
 
     @Autowired
     private ExpenseRepository expenseRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
 
     @Test
     void findByExpenseDateBetweenReturnsExpensesInDateRange() {
@@ -60,5 +66,22 @@ class ExpenseRepositoryTest {
         assertThat(result).hasSize(1)
                 .extracting(ExpenseEntity::getCategory)
                 .containsOnly(KakeboCategory.SURVIVAL);
+    }
+
+    @Test
+    void savingADetachedExpenseWhoseRowWasDeletedThrowsOptimisticLockingFailure() {
+        ExpenseEntity saved = expenseRepository.saveAndFlush(
+                new ExpenseEntity(null, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 1), "original"));
+        entityManager.detach(saved);
+
+        expenseRepository.deleteById(saved.getId());
+        entityManager.flush();
+
+        saved.setNote("mutated after concurrent delete");
+
+        assertThatThrownBy(() -> {
+            expenseRepository.save(saved);
+            expenseRepository.flush();
+        }).isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }

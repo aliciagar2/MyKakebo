@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -161,6 +162,25 @@ class ExpenseControllerTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.note").value(maxNote));
+    }
+
+    @Test
+    void updateReturns404WhenConcurrentDeleteWinsTheRace() throws Exception {
+        // findById passes (row still there), but save() hits the @Version check because
+        // another request deleted the row in between. Should surface as 404, not 200/500.
+        ExpenseEntity existing = expense(5L, KakeboCategory.SURVIVAL, "50.00", LocalDate.of(2026, 1, 15), "Groceries");
+        when(expenseRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(expenseRepository.save(any(ExpenseEntity.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(ExpenseEntity.class, 5L));
+
+        String body = """
+                {"category":"OPTIONAL","amount":99.99,"date":"2026-01-16","note":"Updated"}
+                """;
+
+        mockMvc.perform(put("/api/months/2026/1/expenses/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound());
     }
 
     @Test

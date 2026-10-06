@@ -8,6 +8,7 @@ import com.aliciagar2.mykakebo.dto.ExpenseResponse;
 import com.aliciagar2.mykakebo.repository.ExpenseRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -66,7 +67,14 @@ public class ExpenseController {
         entity.setExpenseDate(request.date());
         entity.setNote(request.note());
 
-        return toResponse(expenseRepository.save(entity));
+        try {
+            return toResponse(expenseRepository.save(entity));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // Another request deleted this expense between the findById above and this save;
+            // the @Version check on ExpenseEntity turns that into a real conflict instead of a
+            // silent no-op update, so surface it the same way as the findById miss above.
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found: " + id, e);
+        }
     }
 
     @DeleteMapping("/{id}")
