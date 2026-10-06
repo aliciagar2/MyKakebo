@@ -26,6 +26,9 @@ public class ExpenseEntity {
 
     private String note;
 
+    @Version
+    private Long version;
+
     protected ExpenseEntity() {
     }
 
