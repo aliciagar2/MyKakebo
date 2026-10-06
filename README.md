@@ -121,7 +121,7 @@ GET /health -> 200 OK, body "OK"
 
 The application declares `spring-boot-starter-data-jpa` and includes JPA entities for expenses, monthly budgets, and monthly reflections (`ExpenseEntity`, `MonthlyBudgetEntity`, `MonthlyReflectionEntity`), each backed by a Spring Data repository (`ExpenseRepository`, `MonthlyBudgetRepository`, `MonthlyReflectionRepository`) exposing the query methods the REST layer uses (date-range and category lookups, lookup by `YearMonth`, chronological ordering). A `YearMonthConverter` maps the domain's `YearMonth` to the `VARCHAR` column Flyway creates for it.
 
-Flyway owns the schema. `V1__init.sql` creates the `monthly_budgets`, `expenses`, and `monthly_reflections` tables; `V2__rename_reserved_columns.sql` renames columns that collided with reserved words (`month` → `year_month`, `date` → `expense_date`). `backend/src/main/resources/application.yml` points at a real PostgreSQL datasource and reads credentials from the environment, with no hardcoded default for the password:
+Flyway owns the schema. `V1__init.sql` creates the `monthly_budgets`, `expenses`, and `monthly_reflections` tables; `V2__rename_reserved_columns.sql` renames columns that collided with reserved words (`month` → `year_month`, `date` → `expense_date`); `V3__add_expense_version.sql` adds the `version` column backing `ExpenseEntity`'s optimistic-locking check (see [REST API](#rest-api)). `backend/src/main/resources/application.yml` points at a real PostgreSQL datasource and reads credentials from the environment, with no hardcoded default for the password:
 
 ```yaml
 spring:
@@ -200,11 +200,15 @@ GET    /api/months/{year}/{month}/budget  -> fetch the budget for that month, in
 POST   /api/months/{year}/{month}/budget  -> create the budget for that month; 201 Created, 409 Conflict if one already exists
 ```
 
-`ExpenseRequest` requires a non-null `category` and `date`, a positive `amount`, and an optional `note` capped at 500 characters. `MonthlyBudgetRequest` requires non-null, non-negative `income`, `fixedExpenses`, and `savingsGoal`. Validation failures and not-found/conflict cases are surfaced through Spring's default `ResponseStatusException` handling, so there is no custom error-body shape yet.
+An invalid `{year}`/`{month}` (e.g. month `0` or `13`) returns `400 Bad Request` rather than crashing — both controllers parse it through a shared `parseYearMonth` helper that catches `DateTimeException` and translates it.
 
-The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/{year}/{month}/expenses` class-level mapping as the collection endpoints, so a request still needs some `{year}`/`{month}` segment to match the route even though those two update/delete operations look the entity up by `id` alone and ignore them.
+`ExpenseRequest` requires a non-null `category` and `date`, a positive `amount` with at most 2 decimal places (`@Digits(integer = 17, fraction = 2)`, matching the `NUMERIC(19,2)` column), and an optional `note` capped at 500 characters; its `date` must also fall within the `{year}`/`{month}` of the URL it's posted to (checked on both create and update) — otherwise `400 Bad Request`. `MonthlyBudgetRequest` requires non-null, non-negative `income`, `fixedExpenses`, and `savingsGoal`, each with the same 2-decimal-place limit. Validation failures and not-found/conflict cases are surfaced through Spring's default `ResponseStatusException` handling, so there is no custom error-body shape yet.
 
-`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params), and failure cases (missing/invalid fields, malformed JSON) — all asserted against HTTP status and response body.
+The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/{year}/{month}/expenses` class-level mapping as the collection endpoints, so a request still needs some `{year}`/`{month}` segment to match the route even though those two update/delete operations look the entity up by `id` alone.
+
+`ExpenseEntity` carries a `@Version` column, so `PUT` also returns `404` (instead of a misleading `200`) if another request deletes the expense between the lookup and the save — Hibernate's optimistic-lock check turns that race into a real `ObjectOptimisticLockingFailureException`, which the controller translates the same way as a missing id. Similarly, `MonthlyBudgetController`'s `POST` first checks for an existing budget to return a fast `409`, but also catches the database's unique-constraint violation on `save()` as a safety net, so a concurrent request racing past that check still gets `409` instead of a raw `500`.
+
+`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params, invalid `{year}`/`{month}`, date outside the URL's month), and failure cases (missing/invalid fields, excess decimal precision, malformed JSON, concurrent-update and concurrent-create races) — all asserted against HTTP status and response body.
 
 ### Dockerfile
 
@@ -235,7 +239,7 @@ MyKakebo/
 │       │   └── web/          # HealthController, ExpenseController, MonthlyBudgetController
 │       ├── main/resources/
 │       │   ├── application.yml
-│       │   └── db/migration/ # Flyway: V1__init.sql, V2__rename_reserved_columns.sql
+│       │   └── db/migration/ # Flyway: V1__init.sql, V2__rename_reserved_columns.sql, V3__add_expense_version.sql
 │       └── test/
 │           ├── resources/application.yml   # H2, Flyway disabled
 │           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test, web/*ControllerTest
@@ -276,12 +280,12 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 47, Failures: 0, Errors: 0`.
+Expected result: `Tests run: 58, Failures: 0, Errors: 0`.
 
 - `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
 - `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
-- `ExpenseRepositoryTest`, `MonthlyBudgetRepositoryTest`, and `MonthlyReflectionRepositoryTest` (3 tests each, 9 total) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback.
-- `ExpenseControllerTest` (17 tests) and `MonthlyBudgetControllerTest` (10 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered.
+- `ExpenseRepositoryTest` (4 tests), `MonthlyBudgetRepositoryTest` (3 tests), and `MonthlyReflectionRepositoryTest` (3 tests) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback. `ExpenseRepositoryTest` also asserts the `@Version`-backed optimistic-locking contract directly: saving a detached `ExpenseEntity` whose row was deleted out from under it throws `ObjectOptimisticLockingFailureException`.
+- `ExpenseControllerTest` (23 tests) and `MonthlyBudgetControllerTest` (14 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered, including the invalid-month, date-outside-month, concurrent-update, and concurrent-create races.
 
 ## Run the application
 
