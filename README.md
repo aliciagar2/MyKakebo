@@ -4,7 +4,7 @@ A framework-free Java 17 domain model and aggregation service for a personal bud
 
 ## Current status
 
-The repository contains the domain/aggregation slice plus a Spring Boot application with a persistence layer: a Maven project with Java records, JPA entities, Flyway-migrated PostgreSQL schema, Spring Data repositories, one aggregation service, a health endpoint, unit and repository tests, a local Docker Compose database, and a multi-stage Dockerfile. The REST API and a frontend are planned but not implemented yet.
+The repository contains the domain/aggregation slice plus a Spring Boot application with a persistence layer and a growing REST API: a Maven project with Java records, JPA entities, Flyway-migrated PostgreSQL schema, Spring Data repositories, validated request/response DTOs, expense and budget REST endpoints, an aggregation service, a health endpoint, unit and repository tests, a local Docker Compose database, and a multi-stage Dockerfile. Summary, reflection, and authentication endpoints, plus a frontend, are planned but not implemented yet.
 
 | Area                                    | Status      |
 | ----------------------------------------- | ----------- |
@@ -18,7 +18,9 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 | Flyway migrations + PostgreSQL datasource | Implemented |
 | Spring Data repositories                | Implemented |
 | Local PostgreSQL via Docker Compose     | Implemented |
-| Persistence-backed REST API             | Planned     |
+| Expense REST endpoints (list/create/update/delete) | Implemented |
+| Monthly budget REST endpoints (create/read) | Implemented |
+| Summary, reflection, and authentication endpoints | Planned     |
 | React + TypeScript frontend             | Planned     |
 | Kubernetes and CI/CD                    | Planned     |
 
@@ -109,15 +111,15 @@ The generated warning is `Warning: money spent exceeds income.` when total spend
 
 ## Spring Boot application
 
-A minimal Spring Boot 4.1.1 application (`MykakeboApplication`) wraps the domain and service code above. It currently exposes one endpoint:
+A Spring Boot 4.1.1 application (`MykakeboApplication`) wraps the domain and service code above and now exposes a small REST API alongside a health check:
 
 ```
 GET /health -> 200 OK, body "OK"
 ```
 
-`HealthController` delegates to `HealthService`, injected via constructor. Both are plain Spring components with no dependency on persistence.
+`HealthController` delegates to `HealthService`, injected via constructor; both are plain Spring components with no dependency on persistence. The persistence-backed endpoints are described in [REST API](#rest-api) below.
 
-The application declares `spring-boot-starter-data-jpa` and includes JPA entities for expenses, monthly budgets, and monthly reflections (`ExpenseEntity`, `MonthlyBudgetEntity`, `MonthlyReflectionEntity`), each backed by a Spring Data repository (`ExpenseRepository`, `MonthlyBudgetRepository`, `MonthlyReflectionRepository`) exposing the query methods the planned REST layer will need (date-range and category lookups, lookup by `YearMonth`, chronological ordering). A `YearMonthConverter` maps the domain's `YearMonth` to the `VARCHAR` column Flyway creates for it.
+The application declares `spring-boot-starter-data-jpa` and includes JPA entities for expenses, monthly budgets, and monthly reflections (`ExpenseEntity`, `MonthlyBudgetEntity`, `MonthlyReflectionEntity`), each backed by a Spring Data repository (`ExpenseRepository`, `MonthlyBudgetRepository`, `MonthlyReflectionRepository`) exposing the query methods the REST layer uses (date-range and category lookups, lookup by `YearMonth`, chronological ordering). A `YearMonthConverter` maps the domain's `YearMonth` to the `VARCHAR` column Flyway creates for it.
 
 Flyway owns the schema. `V1__init.sql` creates the `monthly_budgets`, `expenses`, and `monthly_reflections` tables; `V2__rename_reserved_columns.sql` renames columns that collided with reserved words (`month` → `year_month`, `date` → `expense_date`). `backend/src/main/resources/application.yml` points at a real PostgreSQL datasource and reads credentials from the environment, with no hardcoded default for the password:
 
@@ -184,6 +186,26 @@ docker compose up -d postgres
 
 Docker Compose automatically loads `.env` from the same directory as `docker-compose.yml`. Stop it with `docker compose down` (add `-v` to also drop the `postgres-data` volume and start from an empty database next time).
 
+### REST API
+
+`ExpenseController` and `MonthlyBudgetController` expose the first persistence-backed endpoints, operating on the JPA entities through the Spring Data repositories described above. Requests and responses use dedicated records in `dto/` (`ExpenseRequest`/`ExpenseResponse`, `MonthlyBudgetRequest`/`MonthlyBudgetResponse`) rather than exposing entities directly, with Jakarta Bean Validation annotations enforced via `@Valid`:
+
+```
+GET    /api/months/{year}/{month}/expenses?category=   -> list expenses in that month, optionally filtered by category
+POST   /api/months/{year}/{month}/expenses              -> create an expense; 201 Created
+PUT    /api/months/{year}/{month}/expenses/{id}          -> update an expense by id; 404 if it doesn't exist
+DELETE /api/months/{year}/{month}/expenses/{id}          -> delete an expense by id; 204 No Content, 404 if it doesn't exist
+
+GET    /api/months/{year}/{month}/budget  -> fetch the budget for that month, including calculated availableToSpend; 404 if none is set
+POST   /api/months/{year}/{month}/budget  -> create the budget for that month; 201 Created, 409 Conflict if one already exists
+```
+
+`ExpenseRequest` requires a non-null `category` and `date`, a positive `amount`, and an optional `note` capped at 500 characters. `MonthlyBudgetRequest` requires non-null, non-negative `income`, `fixedExpenses`, and `savingsGoal`. Validation failures and not-found/conflict cases are surfaced through Spring's default `ResponseStatusException` handling, so there is no custom error-body shape yet.
+
+The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/{year}/{month}/expenses` class-level mapping as the collection endpoints, so a request still needs some `{year}`/`{month}` segment to match the route even though those two update/delete operations look the entity up by `id` alone and ignore them.
+
+`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params), and failure cases (missing/invalid fields, malformed JSON) — all asserted against HTTP status and response body.
+
 ### Dockerfile
 
 `backend/Dockerfile` builds the application as a two-stage image:
@@ -208,32 +230,27 @@ MyKakebo/
 │       │   ├── MykakeboApplication.java
 │       │   ├── domain/       # Budget/expense/reflection records, JPA entities, YearMonthConverter
 │       │   ├── repository/   # ExpenseRepository, MonthlyBudgetRepository, MonthlyReflectionRepository
+│       │   ├── dto/          # ExpenseRequest/Response, MonthlyBudgetRequest/Response
 │       │   ├── service/      # SummaryService, HealthService
-│       │   └── web/          # HealthController
+│       │   └── web/          # HealthController, ExpenseController, MonthlyBudgetController
 │       ├── main/resources/
 │       │   ├── application.yml
 │       │   └── db/migration/ # Flyway: V1__init.sql, V2__rename_reserved_columns.sql
 │       └── test/
 │           ├── resources/application.yml   # H2, Flyway disabled
-│           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test
+│           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test, web/*ControllerTest
 ├── algorithms/               # Weekly DSA practice, see algorithms/README.md
 ├── frontend/                 # Reserved for the future React client
 └── k8s/                      # Reserved for future deployment manifests
 ```
 
-## API (target, not yet implemented)
+## API (planned, not yet implemented)
+
+Expense and budget endpoints are implemented — see [REST API](#rest-api) above. Still planned:
 
 ```
 POST   /api/auth/login
 POST   /api/auth/register
-
-GET    /api/months/{year}/{month}/budget
-POST   /api/months/{year}/{month}/budget
-
-GET    /api/months/{year}/{month}/expenses?category=
-POST   /api/months/{year}/{month}/expenses
-PUT    /api/expenses/{id}
-DELETE /api/expenses/{id}
 
 GET    /api/months/{year}/{month}/summary
 GET    /api/months/{year}/{month}/reflection
@@ -259,11 +276,12 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 20, Failures: 0, Errors: 0`.
+Expected result: `Tests run: 47, Failures: 0, Errors: 0`.
 
 - `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
 - `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
 - `ExpenseRepositoryTest`, `MonthlyBudgetRepositoryTest`, and `MonthlyReflectionRepositoryTest` (3 tests each, 9 total) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback.
+- `ExpenseControllerTest` (17 tests) and `MonthlyBudgetControllerTest` (10 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered.
 
 ## Run the application
 
@@ -317,7 +335,7 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 
 1. ~~Add Spring Boot configuration and application entry point.~~ Done.
 2. ~~Add JPA entities, Flyway migrations, and a PostgreSQL `DataSource`.~~ Done.
-3. Expose budget, expense, summary, reflection, and authentication REST endpoints.
+3. ~~Expose budget and expense REST endpoints.~~ Done. Summary, reflection, and authentication endpoints remain.
 4. Add the React + TypeScript client.
 5. Add k3s manifests, CI/CD, and integration tests.
 
