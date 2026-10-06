@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 public record ExpenseRequest(
         @NotNull KakeboCategory category,
-        @NotNull @Positive BigDecimal amount,
+        @NotNull @Positive @Digits(integer = 17, fraction = 2) BigDecimal amount,
         @NotNull LocalDate date,
         @Size(max = 500) String note
 ) {}

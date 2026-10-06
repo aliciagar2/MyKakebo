@@ -4,7 +4,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public record MonthlyBudgetRequest(
-        @NotNull @PositiveOrZero BigDecimal income,
-        @NotNull @PositiveOrZero BigDecimal fixedExpenses,
-        @NotNull @PositiveOrZero BigDecimal savingsGoal
+        @NotNull @PositiveOrZero @Digits(integer = 17, fraction = 2) BigDecimal income,
+        @NotNull @PositiveOrZero @Digits(integer = 17, fraction = 2) BigDecimal fixedExpenses,
+        @NotNull @PositiveOrZero @Digits(integer = 17, fraction = 2) BigDecimal savingsGoal
 ) {}
