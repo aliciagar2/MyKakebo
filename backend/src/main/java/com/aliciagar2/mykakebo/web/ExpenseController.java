@@ -51,6 +51,8 @@ public class ExpenseController {
             @PathVariable int month,
             @Valid @RequestBody ExpenseRequest request) {
 
+        requireDateInMonth(request.date(), parseYearMonth(year, month));
+
         ExpenseEntity entity = new ExpenseEntity(
                 null, request.category(), request.amount(), request.date(), request.note());
 
@@ -58,7 +60,14 @@ public class ExpenseController {
     }
 
     @PutMapping("/{id}")
-    public ExpenseResponse update(@PathVariable Long id, @Valid @RequestBody ExpenseRequest request) {
+    public ExpenseResponse update(
+            @PathVariable int year,
+            @PathVariable int month,
+            @PathVariable Long id,
+            @Valid @RequestBody ExpenseRequest request) {
+
+        requireDateInMonth(request.date(), parseYearMonth(year, month));
+
         ExpenseEntity entity = expenseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found: " + id));
 
@@ -95,6 +104,13 @@ public class ExpenseController {
             return YearMonth.of(year, month);
         } catch (DateTimeException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid year/month: " + year + "/" + month, e);
+        }
+    }
+
+    private static void requireDateInMonth(LocalDate date, YearMonth yearMonth) {
+        if (!YearMonth.from(date).equals(yearMonth)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "date " + date + " is not in " + yearMonth);
         }
     }
 }
