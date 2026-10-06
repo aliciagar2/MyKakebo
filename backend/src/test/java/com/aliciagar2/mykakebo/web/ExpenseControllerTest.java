@@ -109,6 +109,34 @@ class ExpenseControllerTest {
     }
 
     @Test
+    void createRejects400WhenDateIsOutsideUrlMonth() throws Exception {
+        String body = """
+                {"category":"SURVIVAL","amount":10.00,"date":"2026-06-15","note":null}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(expenseRepository);
+    }
+
+    @Test
+    void updateRejects400WhenDateIsOutsideUrlMonth() throws Exception {
+        String body = """
+                {"category":"SURVIVAL","amount":10.00,"date":"2026-06-15","note":null}
+                """;
+
+        mockMvc.perform(put("/api/months/2026/1/expenses/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(expenseRepository);
+    }
+
+    @Test
     void deleteRemovesExistingExpense() throws Exception {
         when(expenseRepository.existsById(5L)).thenReturn(true);
 
