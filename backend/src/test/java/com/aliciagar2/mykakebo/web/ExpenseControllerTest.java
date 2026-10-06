@@ -261,6 +261,20 @@ class ExpenseControllerTest {
 
 
     @Test
+    void createRejectsAmountWithTooManyDecimalPlaces() throws Exception {
+        String body = """
+                {"category":"SURVIVAL","amount":42.5001,"date":"2026-01-01","note":null}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/1/expenses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(expenseRepository);
+    }
+
+    @Test
     void createRejectsMissingCategory() throws Exception {
         String body = """
                 {"amount":10.00,"date":"2026-01-01","note":null}

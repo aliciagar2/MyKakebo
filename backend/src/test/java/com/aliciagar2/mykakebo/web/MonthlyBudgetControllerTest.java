@@ -179,6 +179,20 @@ class MonthlyBudgetControllerTest {
     }
 
     @Test
+    void createRejectsIncomeWithTooManyDecimalPlaces() throws Exception {
+        String body = """
+                {"income":1000.001,"fixedExpenses":100.00,"savingsGoal":50.00}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/1/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(monthlyBudgetRepository);
+    }
+
+    @Test
     void createRejectsMissingIncome() throws Exception {
         String body = """
                 {"fixedExpenses":100.00,"savingsGoal":50.00}
