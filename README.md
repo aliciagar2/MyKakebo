@@ -22,7 +22,9 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 | Monthly budget REST endpoints (create/read) | Implemented |
 | Summary, reflection, and authentication endpoints | Planned     |
 | React + TypeScript frontend             | Planned     |
-| Kubernetes and CI/CD                    | Planned     |
+| CI: GitHub Actions (tests + build), CodeQL, Dependabot | Implemented |
+| Kubernetes manifest (API only, no database yet) | Partial     |
+| Postgres in k8s, Testcontainers, CD     | Planned     |
 
 ## The Kakebo model
 
@@ -245,7 +247,8 @@ MyKakebo/
 │           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test, web/*ControllerTest
 ├── algorithms/               # Weekly DSA practice, see algorithms/README.md
 ├── frontend/                 # Reserved for the future React client
-└── k8s/                      # Reserved for future deployment manifests
+├── k8s/                      # backend.yaml: Deployment + Service (API only, no DB yet)
+└── .github/                  # CI workflow, CodeQL, Dependabot, CODEOWNERS
 ```
 
 ## API (planned, not yet implemented)
