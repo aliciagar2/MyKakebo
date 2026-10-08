@@ -297,3 +297,6 @@ dist
 # Local-only notes, reviews, and scratch output (never shipped or shared)
 notes/
 .DS_Store
+
+# Claude Code local settings
+.claude/
