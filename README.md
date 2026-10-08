@@ -340,11 +340,18 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 
 ## Roadmap
 
-1. ~~Add Spring Boot configuration and application entry point.~~ Done.
-2. ~~Add JPA entities, Flyway migrations, and a PostgreSQL `DataSource`.~~ Done.
-3. ~~Expose budget and expense REST endpoints.~~ Done. Summary, reflection, and authentication endpoints remain.
-4. Add the React + TypeScript client.
-5. Add k3s manifests, CI/CD, and integration tests.
+1. ~~Spring Boot application, `/health`, Dockerfile~~ Done.
+2. ~~JPA entities, Flyway migrations, PostgreSQL datasource~~ Done.
+3. ~~Expense and budget REST endpoints~~ Done.
+4. ~~CI (tests, CodeQL, Dependabot), k3s manifest for the API, Java 21 toolchain~~ Done.
+5. Hexagonal refactor: ports and adapters, boundaries enforced by ArchUnit.
+6. Multi-user households with roles (owner, editor, viewer, guest), Spring Security + JWT.
+7. Summary and reflection endpoints, CORS, consistent error responses.
+8. PostgreSQL in k3s, Testcontainers, JaCoCo coverage gate.
+9. Java 21 features (sealed types, virtual-thread benchmark).
+10. Async CSV import (Kafka, outbox, idempotency), if justified.
+11. Observability and production hardening.
+12. React + TypeScript client.
 
 ## Algorithms track
 
