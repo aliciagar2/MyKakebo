@@ -1,6 +1,6 @@
 # MyKakebo
 
-A framework-free Java 17 domain model and aggregation service for a personal budgeting app based on the Japanese Kakebo method. Models a monthly budget, categorizes expenses, and produces end-of-month spending and reflection data.
+A framework-free Java 21 domain model and aggregation service for a personal budgeting app based on the Japanese Kakebo method. Models a monthly budget, categorizes expenses, and produces end-of-month spending and reflection data.
 
 ## Current status
 
@@ -8,7 +8,7 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 
 | Area                                    | Status      |
 | ----------------------------------------- | ----------- |
-| Java 17 domain model                    | Implemented |
+| Java 21 domain model                    | Implemented |
 | Category aggregation and budget checks  | Implemented |
 | JUnit 5 unit tests                      | Implemented |
 | Spring Boot application skeleton        | Implemented |
@@ -216,8 +216,8 @@ The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/
 
 `backend/Dockerfile` builds the application as a two-stage image:
 
-1. **Build stage** (`maven:3.9.11-eclipse-temurin-17-alpine`) compiles the project and packages the jar with `mvn clean package -DskipTests` (tests already run in a separate CI step).
-2. **Runtime stage** (`eclipse-temurin:17-jre-alpine`) copies only the built jar from the build stage and runs it. The final image ships without Maven, the JDK compiler, or the source tree.
+1. **Build stage** (`maven:3.9.11-eclipse-temurin-21-alpine`) compiles the project and packages the jar with `mvn clean package -DskipTests` (tests already run in a separate CI step).
+2. **Runtime stage** (`eclipse-temurin:21-jre-alpine`) copies only the built jar from the build stage and runs it. The final image ships without Maven, the JDK compiler, or the source tree.
 
 The image listens on port `8080`.
 
@@ -267,7 +267,7 @@ GET    /api/months/history
 
 ## Requirements
 
-- Java 17 or newer
+- Java 21 or newer
 - The bundled Maven wrapper (`./mvnw`) — no separate Maven install required
 - Docker and Docker Compose, to run a local PostgreSQL instance and to build/run the container image
 - Node.js is not required for anything currently in the repository
