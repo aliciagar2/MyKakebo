@@ -1,6 +1,7 @@
 package com.aliciagar2.mykakebo.web;
 
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void monthlyBudgetAlreadyExistsReturns409() throws Exception {
+        mockMvc.perform(get("/test/budget-exists"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("MONTHLY_BUDGET_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.message").value("Monthly budget already exists"));
+    }
+
+    @Test
     void monthlyBudgetNotFoundReturns404() throws Exception {
         mockMvc.perform(get("/test/budget-not-exists"))
                 .andExpect(status().isNotFound())
@@ -45,6 +54,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/expense-not-found")
         void expenseNotFound() {
             throw new ExpenseNotFoundException("Expense not found");
+        }
+
+        @GetMapping("/budget-exists")
+        void budgetExists() {
+            throw new MonthlyBudgetAlreadyExistsException("Budget already exists");
         }
 
         @GetMapping("/budget-not-exists")
