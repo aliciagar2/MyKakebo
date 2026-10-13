@@ -1,10 +1,7 @@
 package com.aliciagar2.mykakebo.web;
 
 
-import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
-import com.aliciagar2.mykakebo.domain.exceptions.InvalidYearMonthException;
-import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
-import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.*;
 import com.aliciagar2.mykakebo.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -31,6 +28,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidYearMonthException.class)
     public ResponseEntity<ErrorResponse> handleInvalidYearMonth(InvalidYearMonthException ex) {
         return buildResponse(ErrorCode.INVALID_YEAR_MONTH);
+    }
+
+    @ExceptionHandler(ExpenseDateOutsideMonthException.class)
+    public ResponseEntity<ErrorResponse> handleExpenseDateOutsideMonth(ExpenseDateOutsideMonthException ex) {
+        return buildResponse(ErrorCode.EXPENSE_DATE_OUTSIDE_MONTH);
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(ErrorCode code) {

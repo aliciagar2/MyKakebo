@@ -2,6 +2,7 @@ package com.aliciagar2.mykakebo.web;
 
 import com.aliciagar2.mykakebo.domain.ExpenseEntity;
 import com.aliciagar2.mykakebo.domain.KakeboCategory;
+import com.aliciagar2.mykakebo.domain.exceptions.ExpenseDateOutsideMonthException;
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
 import com.aliciagar2.mykakebo.domain.exceptions.InvalidYearMonthException;
 import com.aliciagar2.mykakebo.dto.ExpenseRequest;
@@ -11,7 +12,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -110,8 +110,7 @@ public class ExpenseController {
 
     private static void requireDateInMonth(LocalDate date, YearMonth yearMonth) {
         if (!YearMonth.from(date).equals(yearMonth)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "date " + date + " is not in " + yearMonth);
+            throw new ExpenseDateOutsideMonthException("date " + date + " is not in " + yearMonth);
         }
     }
 }
