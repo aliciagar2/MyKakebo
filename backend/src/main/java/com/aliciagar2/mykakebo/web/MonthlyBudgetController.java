@@ -1,7 +1,7 @@
 package com.aliciagar2.mykakebo.web;
 
 import com.aliciagar2.mykakebo.domain.MonthlyBudgetEntity;
-import com.aliciagar2.mykakebo.domain.exceptions.InvalidYearMonthException;
+import com.aliciagar2.mykakebo.domain.exceptions.YearMonthInvalidException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
 import com.aliciagar2.mykakebo.dto.MonthlyBudgetRequest;
@@ -70,7 +70,7 @@ public class MonthlyBudgetController {
         try {
             return YearMonth.of(year, month);
         } catch (DateTimeException e) {
-            throw new InvalidYearMonthException("Invalid year/month: " + year + "/" + month, e);
+            throw new YearMonthInvalidException("Invalid year/month: " + year + "/" + month, e);
         }
     }
 }
