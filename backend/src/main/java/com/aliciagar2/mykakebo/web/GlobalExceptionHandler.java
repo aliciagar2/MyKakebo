@@ -28,7 +28,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ExpenseNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleExpenseNotFound(ExpenseNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleExpenseNotFound() {
         return buildResponse(ErrorCode.EXPENSE_NOT_FOUND);
     }
 
