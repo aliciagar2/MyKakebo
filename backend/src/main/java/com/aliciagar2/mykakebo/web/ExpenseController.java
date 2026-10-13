@@ -1,8 +1,8 @@
 package com.aliciagar2.mykakebo.web;
 
-
 import com.aliciagar2.mykakebo.domain.ExpenseEntity;
 import com.aliciagar2.mykakebo.domain.KakeboCategory;
+import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
 import com.aliciagar2.mykakebo.dto.ExpenseRequest;
 import com.aliciagar2.mykakebo.dto.ExpenseResponse;
 import com.aliciagar2.mykakebo.repository.ExpenseRepository;
@@ -69,7 +69,7 @@ public class ExpenseController {
         requireDateInMonth(request.date(), parseYearMonth(year, month));
 
         ExpenseEntity entity = expenseRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found: " + id));
+                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found: " + id));
 
         entity.setCategory(request.category());
         entity.setAmount(request.amount());
@@ -82,7 +82,7 @@ public class ExpenseController {
             // Another request deleted this expense between the findById above and this save;
             // the @Version check on ExpenseEntity turns that into a real conflict instead of a
             // silent no-op update, so surface it the same way as the findById miss above.
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found: " + id, e);
+            throw new ExpenseNotFoundException("Expense not found: " + id, e);
         }
     }
 
@@ -90,7 +90,7 @@ public class ExpenseController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         if (!expenseRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found: " + id);
+            throw new ExpenseNotFoundException("Expense not found: " + id);
         }
         expenseRepository.deleteById(id);
     }
