@@ -11,6 +11,7 @@ public enum ErrorCode {
     MALFORMED_REQUEST_BODY(HttpStatus.BAD_REQUEST, "Malformed request body"),
     INVALID_REQUEST_PARAMETER(HttpStatus.BAD_REQUEST, "Invalid request parameter"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Request validation failed"),
+    REQUEST_ERROR(HttpStatus.BAD_REQUEST, "The request could not be processed"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Something wrong happened");
 
     private final HttpStatus httpStatus;
