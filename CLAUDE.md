@@ -1,0 +1,135 @@
+# MyKakebo: project rules
+
+## About this file
+
+- This file is ALWAYS written in English, even when the conversation is in Spanish.
+- One topic per section. Add new rules to the section they belong to, or create a new section; never mix topics.
+
+## Tech stack
+
+- Language: Java 21 (`java.version` is 21 in `backend/pom.xml`).
+- Framework: Spring Boot 4.1.1 (Spring Web, Spring Data JPA / Hibernate).
+- Build tool: Maven, through the wrapper (`./mvnw`) in `backend/`. NEVER use Gradle.
+- Database: PostgreSQL 16 (`postgres:16-alpine` in `docker-compose.yml`), database name `kakebo`.
+- Migrations: Flyway (`backend/src/main/resources/db/migration`).
+- CI: GitHub Actions on `ubuntu-24.04` (`.github/workflows/ci.yml`), plus CodeQL and Dependabot.
+- Deployment: Docker (multi-stage `backend/Dockerfile`) and Kubernetes manifests in `k8s/`.
+- Base package: `com.aliciagar2.mykakebo`.
+- `frontend/` is empty (React + TypeScript planned, not started).
+
+## Commands
+
+Run everything from the repository root unless a `cd` is shown.
+
+| Goal | Command |
+|---|---|
+| Create local env file (first time only) | `cp .env.example .env`, then set `DB_PASSWORD` |
+| Start local Postgres | `docker compose up -d postgres` |
+| Stop local Postgres (keeps data) | `docker compose down` |
+| Run the API | `cd backend && ./mvnw spring-boot:run` |
+| Run all tests | `cd backend && ./mvnw test` |
+| Run one test class | `cd backend && ./mvnw test -Dtest=ExpenseControllerTest` |
+| Run one test method | `cd backend && ./mvnw test -Dtest=ExpenseControllerTest#listReturnsExpensesInMonth` |
+| Full build, as CI does | `cd backend && ./mvnw verify` |
+
+- NEVER run `docker compose down -v`: it deletes the Postgres data volume.
+- The app reads `DB_URL` (default `jdbc:postgresql://localhost:5432/kakebo`), `DB_USERNAME` and `DB_PASSWORD`.
+
+## Database and Flyway migrations
+
+- Schema changes happen ONLY through Flyway migrations. Hibernate runs with `ddl-auto: validate` and MUST NOT create or alter tables.
+- NEVER edit, rename, reorder or delete a migration that already exists (`V1`, `V2`, `V3`, ...). To change the schema, add a NEW migration with the next version number.
+- File name format: `V<number>__<snake_case_description>.sql` (double underscore), for example `V2__rename_reserved_columns.sql`.
+- Any change to a `@Entity` that affects a column or table MUST come with its migration in the same change.
+- Every migration MUST apply cleanly on top of the previous ones, in order, on an empty database.
+
+## Do not touch without asking
+
+Ask the user first, and wait for an explicit yes, before you:
+
+- read, print, edit or delete `.env` (see "Secrets and credentials");
+- change dependency or plugin versions in `backend/pom.xml`, or add or remove a dependency;
+- edit `.github/` (workflows, `CODEOWNERS`, `dependabot.yml`), `LICENSE`, `.pre-commit-config.yaml` or `.gitignore`;
+- edit `.idea/` or `.vscode/` (IDE settings);
+- delete or rename files, or move classes between packages;
+- do a refactor that touches more than the files the task is about;
+- change a test so that it passes (a failing test is information: explain it first);
+- run destructive commands: `docker compose down -v`, `rm -rf`, dropping or truncating a database.
+
+## Secrets and credentials
+
+- NEVER commit passwords, tokens, API keys, private keys or connection strings with credentials.
+- `.env` is git-ignored and holds the real values. Only `.env.example` is committed, and it contains placeholders only.
+- NEVER print, log, quote or copy the value of a secret in a reply, a file, a commit message or a command. When listing `.env`, show variable names only.
+- Kubernetes `Secret` manifests in `k8s/` MUST NOT contain real values.
+- The pre-commit hook `gitleaks` scans staged changes for secrets. NEVER bypass it (no `--no-verify`).
+- If a secret has been committed or exposed: stop, tell the user immediately, and tell them to rotate it. Removing it from the latest commit is NOT enough, because it stays in the git history.
+
+## Git workflow and commits
+
+### Always ask before committing
+
+- NEVER run `git commit` without asking the user first. This rule has no exceptions.
+- Before each commit:
+  1. show `git status` and `git diff --stat`;
+  2. propose the exact commit message;
+  3. wait for an explicit yes.
+- An approval covers ONE commit only. Ask again for the next one.
+- Also ask before `git push`, `git commit --amend`, `git rebase`, `git reset`, `git stash drop`, deleting a branch, or any force operation.
+- NEVER use `--no-verify`. If a pre-commit hook fails (gitleaks, checkstyle, whitespace, large files), fix the cause.
+
+### Commit message format
+
+- Conventional Commits: `<type>(<optional scope>): <summary>`
+- Types used in this repository: `feat`, `fix`, `chore`, `test`, `ci`. Also allowed: `docs`, `refactor`, `build`.
+- Scope is optional and short, for example `deps` or `domain`.
+- Summary: imperative mood, starts in lowercase, no trailing period, 72 characters or fewer.
+- Optional body, separated by a blank line, explains WHY, not what.
+- One logical change per commit.
+
+Examples (from this repository's history):
+
+- `feat: create ExpenseController with get/post/delete/put`
+- `fix(domain): add explicit YearMonth converter to match VARCHAR schema`
+- `chore(deps): bump org.apache.maven:apache-maven in /backend`
+
+### Branches
+
+- Work on a short-lived topic branch with a descriptive name. NEVER commit directly to `main`.
+- Changes reach `main` through a pull request.
+
+## Naming: test methods
+
+- camelCase only. No underscores, no `test` prefix, no `@DisplayName`.
+- Structure: `<actionOrSubject><Outcome>[When<Condition>]`
+  - `listReturnsExpensesInMonth`
+  - `updateReturns404WhenExpenseDoesNotExist`
+  - `createReturns409WhenBudgetAlreadyExistsForMonth`
+- Verbs for the outcome:
+  - `Returns<status>` for HTTP responses (`createReturns409...`)
+  - `Rejects` for validation failures (`createRejectsNegativeSavingsGoal`)
+  - `Persists` for writes (`createPersistsExpenseAndReturns201`)
+  - `Accepts` for valid boundary values (`createAcceptsSmallestPositiveAmount`)
+- One behavior per test.
+- Exception handler tests start from the exception: `expenseNotFoundReturns404WithErrorBody`.
+
+## Naming: classes
+
+| Kind | Rule | Examples |
+|---|---|---|
+| Controller | `<Resource>Controller`, in `web/` | `ExpenseController` |
+| Service | `<Name>Service`, in `service/` | `SummaryService` |
+| Repository | `<Entity without "Entity">Repository`, in `repository/` | `ExpenseRepository` |
+| JPA entity | `<Name>Entity`, annotated `@Entity` | `ExpenseEntity` |
+| Domain record | plain noun, no suffix | `Expense`, `MonthlyBudget` |
+| Request DTO | `<Resource>Request`, record, in `dto/` | `ExpenseRequest` |
+| Response DTO | `<Resource>Response`, record, in `dto/` | `ExpenseResponse` |
+| Custom exception | `<Subject><Reason>Exception`, in `domain/exceptions/` | `ExpenseNotFoundException`, `MonthlyBudgetAlreadyExistsException` |
+| Exception handler | `GlobalExceptionHandler`, in `web/` | |
+| Error body | `ErrorResponse`, `FieldViolation` (records, in `dto/`) | |
+| JPA converter | `<Type>Converter` | `YearMonthConverter` |
+
+## Naming: test classes
+
+- `<ClassUnderTest>Test`, same package as the class under test, under `src/test/java`.
+- Exception: `MykakeboApplicationTests` (Spring Initializr default).
