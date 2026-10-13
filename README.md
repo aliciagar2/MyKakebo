@@ -20,6 +20,7 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 | Local PostgreSQL via Docker Compose     | Implemented |
 | Expense REST endpoints (list/create/update/delete) | Implemented |
 | Monthly budget REST endpoints (create/read) | Implemented |
+| Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`) | Implemented |
 | Summary, reflection, and authentication endpoints | Planned     |
 | React + TypeScript frontend             | Planned     |
 | CI: GitHub Actions (tests + build), CodeQL, Dependabot | Implemented |
@@ -204,13 +205,21 @@ POST   /api/months/{year}/{month}/budget  -> create the budget for that month; 2
 
 An invalid `{year}`/`{month}` (e.g. month `0` or `13`) returns `400 Bad Request` rather than crashing — both controllers parse it through a shared `parseYearMonth` helper that catches `DateTimeException` and translates it.
 
-`ExpenseRequest` requires a non-null `category` and `date`, a positive `amount` with at most 2 decimal places (`@Digits(integer = 17, fraction = 2)`, matching the `NUMERIC(19,2)` column), and an optional `note` capped at 500 characters; its `date` must also fall within the `{year}`/`{month}` of the URL it's posted to (checked on both create and update) — otherwise `400 Bad Request`. `MonthlyBudgetRequest` requires non-null, non-negative `income`, `fixedExpenses`, and `savingsGoal`, each with the same 2-decimal-place limit. Validation failures and not-found/conflict cases are surfaced through Spring's default `ResponseStatusException` handling, so there is no custom error-body shape yet.
+`ExpenseRequest` requires a non-null `category` and `date`, a positive `amount` with at most 2 decimal places (`@Digits(integer = 17, fraction = 2)`, matching the `NUMERIC(19,2)` column), and an optional `note` capped at 500 characters; its `date` must also fall within the `{year}`/`{month}` of the URL it's posted to (checked on both create and update) — otherwise `400 Bad Request`. `MonthlyBudgetRequest` requires non-null, non-negative `income`, `fixedExpenses`, and `savingsGoal`, each with the same 2-decimal-place limit.
+
+Every error response — validation failures, not-found/conflict cases, and anything else — shares one JSON shape, `ErrorResponse(code, message, violations)`, produced by `GlobalExceptionHandler`:
+
+```json
+{ "code": "EXPENSE_NOT_FOUND", "message": "Expense not found", "violations": null }
+```
+
+`ErrorCode` is the single source of truth mapping each error to its HTTP status and default message (`EXPENSE_NOT_FOUND` → 404, `MONTHLY_BUDGET_ALREADY_EXISTS` → 409, `INVALID_YEAR_MONTH`/`EXPENSE_DATE_OUTSIDE_MONTH`/`MALFORMED_REQUEST_BODY`/`INVALID_REQUEST_PARAMETER`/`VALIDATION_ERROR`/`REQUEST_ERROR` → 400, `INTERNAL_SERVER_ERROR` → 500). `@ExceptionHandler` methods translate each domain exception (`ExpenseNotFoundException`, `MonthlyBudgetNotFoundException`, `MonthlyBudgetAlreadyExistsException`, `YearMonthInvalidException`, `ExpenseDateOutsideMonthException`) to its `ErrorCode`. Bean Validation failures (`MethodArgumentNotValidException`) populate `violations` with one `FieldViolation(field, message)` per rejected field. Any other exception Spring MVC would otherwise handle internally (malformed JSON, a 405 on an unsupported method, etc.) falls back to the generic `REQUEST_ERROR`/`INTERNAL_SERVER_ERROR` codes rather than leaking the raw exception message or an ad hoc status name — `GlobalExceptionHandler` never reports more detail than the matched `ErrorCode` provides.
 
 The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/{year}/{month}/expenses` class-level mapping as the collection endpoints, so a request still needs some `{year}`/`{month}` segment to match the route even though those two update/delete operations look the entity up by `id` alone.
 
 `ExpenseEntity` carries a `@Version` column, so `PUT` also returns `404` (instead of a misleading `200`) if another request deletes the expense between the lookup and the save — Hibernate's optimistic-lock check turns that race into a real `ObjectOptimisticLockingFailureException`, which the controller translates the same way as a missing id. Similarly, `MonthlyBudgetController`'s `POST` first checks for an existing budget to return a fast `409`, but also catches the database's unique-constraint violation on `save()` as a safety net, so a concurrent request racing past that check still gets `409` instead of a raw `500`.
 
-`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params, invalid `{year}`/`{month}`, date outside the URL's month), and failure cases (missing/invalid fields, excess decimal precision, malformed JSON, concurrent-update and concurrent-create races) — all asserted against HTTP status and response body.
+`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params, invalid `{year}`/`{month}`, date outside the URL's month), and failure cases (missing/invalid fields, excess decimal precision, malformed JSON, concurrent-update and concurrent-create races) — all asserted against HTTP status and response body. `GlobalExceptionHandlerTest` exercises the handler directly, against a throwaway `@WebMvcTest`-scoped controller, confirming each exception maps to its documented `ErrorCode` and that neither the 500 fallback nor the 405 fallback leaks the underlying exception message.
 
 ### Dockerfile
 
@@ -235,21 +244,28 @@ MyKakebo/
 │       ├── main/java/com/aliciagar2/mykakebo/
 │       │   ├── MykakeboApplication.java
 │       │   ├── domain/       # Budget/expense/reflection records, JPA entities, YearMonthConverter
+│       │   │   └── exceptions/ # ExpenseNotFoundException, MonthlyBudget{NotFound,AlreadyExists}Exception, YearMonthInvalidException, ExpenseDateOutsideMonthException
 │       │   ├── repository/   # ExpenseRepository, MonthlyBudgetRepository, MonthlyReflectionRepository
-│       │   ├── dto/          # ExpenseRequest/Response, MonthlyBudgetRequest/Response
+│       │   ├── dto/          # ExpenseRequest/Response, MonthlyBudgetRequest/Response, ErrorResponse, FieldViolation
 │       │   ├── service/      # SummaryService, HealthService
-│       │   └── web/          # HealthController, ExpenseController, MonthlyBudgetController
+│       │   └── web/          # HealthController, ExpenseController, MonthlyBudgetController, GlobalExceptionHandler, ErrorCode
 │       ├── main/resources/
 │       │   ├── application.yml
 │       │   └── db/migration/ # Flyway: V1__init.sql, V2__rename_reserved_columns.sql, V3__add_expense_version.sql
 │       └── test/
 │           ├── resources/application.yml   # H2, Flyway disabled
-│           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test, web/*ControllerTest
+│           └── java/...      # SummaryServiceTest, MykakeboApplicationTests, repository/*Test, web/*ControllerTest, web/GlobalExceptionHandlerTest
 ├── algorithms/               # Weekly DSA practice, see algorithms/README.md
 ├── frontend/                 # Reserved for the future React client
 ├── k8s/                      # backend.yaml: Deployment + Service (API only, no DB yet)
 └── .github/                  # CI workflow, CodeQL, Dependabot, CODEOWNERS
 ```
+
+### Class diagram
+
+![Backend classes and the relations between them](docs/class-structure-2026-10-13.svg)
+
+Sketch of the classes in `backend/src/main/java` and how they relate: controllers, repositories, JPA entities, domain records, exceptions and the error handling. Redraw it when the structure changes.
 
 ## API (planned, not yet implemented)
 
@@ -283,12 +299,13 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 58, Failures: 0, Errors: 0`.
+Expected result: `Tests run: 64, Failures: 0, Errors: 0`.
 
 - `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
 - `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
 - `ExpenseRepositoryTest` (4 tests), `MonthlyBudgetRepositoryTest` (3 tests), and `MonthlyReflectionRepositoryTest` (3 tests) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback. `ExpenseRepositoryTest` also asserts the `@Version`-backed optimistic-locking contract directly: saving a detached `ExpenseEntity` whose row was deleted out from under it throws `ObjectOptimisticLockingFailureException`.
 - `ExpenseControllerTest` (23 tests) and `MonthlyBudgetControllerTest` (14 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered, including the invalid-month, date-outside-month, concurrent-update, and concurrent-create races.
+- `GlobalExceptionHandlerTest` (6 tests) drives `GlobalExceptionHandler` directly against a dedicated test controller, covering every mapped exception's status/`ErrorCode`, the field-violation body for a failed `@Valid` request, and that the 500 and 405 fallbacks never leak the original exception message.
 
 ## Run the application
 
@@ -344,14 +361,15 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 2. ~~JPA entities, Flyway migrations, PostgreSQL datasource~~ Done.
 3. ~~Expense and budget REST endpoints~~ Done.
 4. ~~CI (tests, CodeQL, Dependabot), k3s manifest for the API, Java 21 toolchain~~ Done.
-5. Hexagonal refactor: ports and adapters, boundaries enforced by ArchUnit.
-6. Multi-user households with roles (owner, editor, viewer, guest), Spring Security + JWT.
-7. Summary and reflection endpoints, CORS, consistent error responses.
-8. PostgreSQL in k3s, Testcontainers, JaCoCo coverage gate.
-9. Java 21 features (sealed types, virtual-thread benchmark).
-10. Async CSV import (Kafka, outbox, idempotency), if justified.
-11. Observability and production hardening.
-12. React + TypeScript client.
+5. ~~Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`)~~ Done.
+6. Hexagonal refactor: ports and adapters, boundaries enforced by ArchUnit.
+7. Multi-user households with roles (owner, editor, viewer, guest), Spring Security + JWT.
+8. Summary and reflection endpoints, CORS.
+9. PostgreSQL in k3s, Testcontainers, JaCoCo coverage gate.
+10. Java 21 features (sealed types, virtual-thread benchmark).
+11. Async CSV import (Kafka, outbox, idempotency), if justified.
+12. Observability and production hardening.
+13. React + TypeScript client.
 
 ## Algorithms track
 
