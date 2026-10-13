@@ -11,7 +11,6 @@ import jakarta.validation.Valid;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.DateTimeException;
 import java.time.YearMonth;
@@ -45,7 +44,7 @@ public class MonthlyBudgetController {
         YearMonth yearMonth = parseYearMonth(year, month);
 
         if (budgetRepository.findByYearMonth(yearMonth).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Budget already set for " + yearMonth);
+            throw new MonthlyBudgetAlreadyExistsException("Budget already set for " + yearMonth);
         }
 
         MonthlyBudgetEntity entity = new MonthlyBudgetEntity(
@@ -57,7 +56,7 @@ public class MonthlyBudgetController {
             // A concurrent request may have created the budget between the findByYearMonth
             // check above and this save; the unique constraint on year_month is the real
             // guard, so translate its violation into the same 409 the check-based path returns.
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Budget already set for " + yearMonth, e);
+            throw new MonthlyBudgetAlreadyExistsException("Budget already set for " + yearMonth, e);
         }
     }
 
@@ -71,7 +70,7 @@ public class MonthlyBudgetController {
         try {
             return YearMonth.of(year, month);
         } catch (DateTimeException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid year/month: " + year + "/" + month, e);
+            throw new InvalidYearMonthException("Invalid year/month: " + year + "/" + month, e);
         }
     }
 }
