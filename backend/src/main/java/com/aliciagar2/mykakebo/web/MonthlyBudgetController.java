@@ -1,6 +1,7 @@
 package com.aliciagar2.mykakebo.web;
 
 import com.aliciagar2.mykakebo.domain.MonthlyBudgetEntity;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.dto.MonthlyBudgetRequest;
 import com.aliciagar2.mykakebo.dto.MonthlyBudgetResponse;
 import com.aliciagar2.mykakebo.repository.MonthlyBudgetRepository;
@@ -28,7 +29,7 @@ public class MonthlyBudgetController {
         YearMonth yearMonth = parseYearMonth(year, month);
 
         MonthlyBudgetEntity entity = budgetRepository.findByYearMonth(yearMonth)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No budget set for " + yearMonth));
+                .orElseThrow(() -> new MonthlyBudgetNotFoundException("No budget set for " + yearMonth));
         return toResponse(entity);
     }
 
