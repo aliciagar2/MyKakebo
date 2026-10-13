@@ -1,0 +1,305 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1860" height="1310" viewBox="0 0 1860 1310">
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="2" result="t"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.3  0 0 0 0.08 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+    </filter>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2b2b2b"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <rect width="1860" height="1310" fill="#fbf8ef"/>
+  <rect width="1860" height="1310" fill="#000" filter="url(#paper)"/>
+
+  <g filter="url(#rough)" font-family="Caveat, 'Comic Sans MS', 'Segoe Print', cursive" fill="#2b2b2b">
+
+    <!-- TITLE -->
+    <text x="40" y="62" font-size="42" font-weight="700">MyKakebo: classes and relations as they are now</text>
+    <text x="42" y="92" font-size="20" fill="#555">read from backend/src/main</text>
+
+    <!-- ===== ZONES, TOP BAND ===== -->
+    <rect x="28" y="110" width="412" height="615" rx="12" fill="none" stroke="#2e7d4f" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="46" y="138" font-size="21" font-weight="700" fill="#2e7d4f">web/ · controllers</text>
+
+    <rect x="470" y="110" width="340" height="615" rx="12" fill="none" stroke="#2a7f86" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="488" y="138" font-size="21" font-weight="700" fill="#2a7f86">repository/</text>
+
+    <rect x="850" y="110" width="410" height="615" rx="12" fill="none" stroke="#c0762b" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="868" y="138" font-size="21" font-weight="700" fill="#c0762b">domain/ · JPA entities</text>
+
+    <rect x="1330" y="110" width="460" height="615" rx="12" fill="none" stroke="#2f5d9e" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="1348" y="138" font-size="21" font-weight="700" fill="#2f5d9e">domain/ · records and enum</text>
+
+    <!-- ===== ZONE A: controllers ===== -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#eefaf1">
+      <rect x="50" y="150" width="370" height="190" rx="6"/>
+      <rect x="50" y="360" width="370" height="195" rx="6"/>
+      <rect x="50" y="575" width="370" height="60" rx="6" fill="#fff"/>
+    </g>
+    <g font-size="14">
+      <text x="62" y="178" font-size="19" font-weight="700">ExpenseController</text>
+      <text x="62" y="198" font-size="13" fill="#555">/api/months/{y}/{m}/expenses</text>
+      <line x1="50" y1="206" x2="420" y2="206" stroke="#2b2b2b"/>
+      <text x="62" y="228">uses ExpenseRepository</text>
+      <text x="62" y="248">uses ExpenseEntity directly</text>
+      <text x="62" y="268">throws ExpenseNotFoundException</text>
+      <text x="62" y="288">throws YearMonthInvalidException</text>
+      <text x="62" y="308">throws ExpenseDateOutsideMonthException</text>
+      <text x="62" y="328">uses ExpenseRequest / ExpenseResponse</text>
+
+      <text x="62" y="388" font-size="19" font-weight="700">MonthlyBudgetController</text>
+      <text x="62" y="408" font-size="13" fill="#555">/api/months/{y}/{m}/budget</text>
+      <line x1="50" y1="416" x2="420" y2="416" stroke="#2b2b2b"/>
+      <text x="62" y="438">uses MonthlyBudgetRepository</text>
+      <text x="62" y="458">uses MonthlyBudgetEntity directly</text>
+      <text x="62" y="478">throws MonthlyBudgetNotFoundException</text>
+      <text x="62" y="498">throws MonthlyBudgetAlreadyExistsException</text>
+      <text x="62" y="518">throws YearMonthInvalidException</text>
+      <text x="62" y="538">uses MonthlyBudgetRequest / Response</text>
+
+      <text x="62" y="602" font-size="19" font-weight="700">HealthController</text>
+      <text x="62" y="623" font-size="14">uses HealthService (service/)</text>
+    </g>
+
+    <!-- ===== ZONE B: repositories ===== -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#e9f6f7">
+      <rect x="480" y="215" width="310" height="70" rx="6"/>
+      <rect x="480" y="415" width="310" height="70" rx="6"/>
+      <rect x="480" y="585" width="310" height="70" rx="6" fill="#f2f2f2" stroke-dasharray="6 5"/>
+    </g>
+    <g font-size="14">
+      <text x="635" y="243" font-size="18" font-weight="700" text-anchor="middle">ExpenseRepository</text>
+      <text x="635" y="267" text-anchor="middle">JpaRepository&lt;ExpenseEntity&gt;</text>
+
+      <text x="635" y="443" font-size="18" font-weight="700" text-anchor="middle">MonthlyBudgetRepository</text>
+      <text x="635" y="467" text-anchor="middle">JpaRepository&lt;MonthlyBudgetEntity&gt;</text>
+
+      <text x="635" y="613" font-size="17" font-weight="700" text-anchor="middle">MonthlyReflectionRepository</text>
+      <text x="635" y="637" font-size="13" text-anchor="middle">JpaRepository&lt;MonthlyReflectionEntity&gt;</text>
+      <text x="635" y="676" font-size="13" text-anchor="middle" fill="#555">no controller uses it</text>
+    </g>
+
+    <!-- ===== ZONE C: entities ===== -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#fdf1e6">
+      <rect x="870" y="150" width="370" height="160" rx="6"/>
+      <rect x="870" y="350" width="370" height="120" rx="6"/>
+      <rect x="870" y="510" width="370" height="130" rx="6"/>
+      <rect x="870" y="662" width="370" height="38" rx="6" fill="#fff"/>
+    </g>
+    <g font-size="16">
+      <text x="1055" y="178" font-size="19" font-weight="700" text-anchor="middle">@Entity ExpenseEntity</text>
+      <text x="1055" y="198" font-size="14" text-anchor="middle" fill="#555">table: expenses</text>
+      <line x1="870" y1="206" x2="1240" y2="206" stroke="#2b2b2b"/>
+      <text x="882" y="228">id · @Version version</text>
+      <text x="882" y="250">category: KakeboCategory</text>
+      <text x="882" y="272">amount · expenseDate · note</text>
+      <text x="882" y="296" font-size="15" fill="#555">no user · no monthYear</text>
+
+      <text x="1055" y="378" font-size="18" font-weight="700" text-anchor="middle">@Entity MonthlyBudgetEntity</text>
+      <text x="1055" y="398" font-size="13" text-anchor="middle" fill="#555">table: monthly_budgets · unique(year_month)</text>
+      <line x1="870" y1="406" x2="1240" y2="406" stroke="#2b2b2b"/>
+      <text x="882" y="428">yearMonth · income</text>
+      <text x="882" y="450">fixedExpenses · savingsGoal</text>
+
+      <text x="1055" y="538" font-size="18" font-weight="700" text-anchor="middle">@Entity MonthlyReflectionEntity</text>
+      <text x="1055" y="558" font-size="13" text-anchor="middle" fill="#555">table: monthly_reflections</text>
+      <line x1="870" y1="566" x2="1240" y2="566" stroke="#2b2b2b"/>
+      <text x="882" y="590">yearMonth · moneyHad · moneySaved</text>
+      <text x="882" y="612">moneySpent · improvementNote</text>
+
+      <text x="1055" y="686" font-size="15" text-anchor="middle">YearMonthConverter · YearMonth ↔ String</text>
+    </g>
+
+    <!-- ===== ZONE D: records ===== -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#eef3fb">
+      <rect x="1350" y="150" width="420" height="125" rx="6"/>
+      <rect x="1350" y="300" width="210" height="170" rx="6"/>
+      <rect x="1580" y="300" width="190" height="130" rx="6"/>
+      <rect x="1350" y="495" width="420" height="120" rx="6"/>
+      <rect x="1350" y="640" width="200" height="65" rx="6" fill="#fff"/>
+      <rect x="1570" y="640" width="200" height="65" rx="6" fill="#f2f2f2" stroke-dasharray="6 5"/>
+    </g>
+    <g font-size="16">
+      <text x="1560" y="178" font-size="19" font-weight="700" text-anchor="middle">«record» Expense</text>
+      <line x1="1350" y1="188" x2="1770" y2="188" stroke="#2b2b2b"/>
+      <text x="1362" y="212">id · monthYear · category</text>
+      <text x="1362" y="234">amount · date · note</text>
+      <text x="1362" y="258" fill="#2f5d9e">+ user: User</text>
+
+      <text x="1455" y="328" font-size="19" font-weight="700" text-anchor="middle">MonthlyBudget</text>
+      <text x="1455" y="348" font-size="14" text-anchor="middle" fill="#555">«record»</text>
+      <line x1="1350" y1="356" x2="1560" y2="356" stroke="#2b2b2b"/>
+      <text x="1362" y="380">income</text>
+      <text x="1362" y="402">fixedExpenses</text>
+      <text x="1362" y="424">savingsGoal</text>
+      <text x="1362" y="448" fill="#2f5d9e">+ user: User</text>
+
+      <text x="1675" y="328" font-size="19" font-weight="700" text-anchor="middle">«record» User</text>
+      <line x1="1580" y1="338" x2="1770" y2="338" stroke="#2b2b2b"/>
+      <text x="1592" y="360">id · email</text>
+      <text x="1592" y="380">passwordHash</text>
+      <text x="1592" y="400">salt</text>
+      <text x="1592" y="422" font-size="14" fill="#555">no table, no entity</text>
+
+      <text x="1560" y="523" font-size="19" font-weight="700" text-anchor="middle">«record» MonthlyReflection</text>
+      <line x1="1350" y1="533" x2="1770" y2="533" stroke="#2b2b2b"/>
+      <text x="1362" y="557">id · monthYear · moneyHad</text>
+      <text x="1362" y="579">moneySaved · moneySpent</text>
+      <text x="1362" y="601">improvementNote · no user</text>
+
+      <text x="1450" y="660" font-size="14" text-anchor="middle" fill="#555">«enum»</text>
+      <text x="1450" y="682" font-size="19" font-weight="700" text-anchor="middle">KakeboCategory</text>
+      <text x="1450" y="700" font-size="13" text-anchor="middle">4 values</text>
+
+      <text x="1670" y="663" font-size="19" font-weight="700" text-anchor="middle">BudgetAllocation</text>
+      <text x="1670" y="686" font-size="13" text-anchor="middle" fill="#555">used only inside domain/</text>
+    </g>
+
+    <!-- ===== ARROWS TOP BAND ===== -->
+    <g stroke="#2b2b2b" stroke-width="2.5" fill="none">
+      <!-- controllers -> repositories -->
+      <path d="M420 250 L478 250" marker-end="url(#arr)"/>
+      <path d="M420 450 L478 450" marker-end="url(#arr)"/>
+      <!-- repositories -> entities -->
+      <path d="M790 250 L868 250" marker-end="url(#arr)"/>
+      <path d="M790 450 L868 450" marker-end="url(#arr)"/>
+      <path d="M790 620 L868 620" marker-end="url(#arr)"/>
+      <!-- record -> record -->
+      <path d="M1675 275 L1675 300" marker-end="url(#arr)"/>
+      <path d="M1560 365 L1578 365" marker-end="url(#arr)"/>
+    </g>
+    <text x="1692" y="291" font-size="14" fill="#2f5d9e">user</text>
+
+    <!-- record ↔ entity: no conversion -->
+    <g stroke="#555" stroke-width="2.5" stroke-dasharray="8 6" fill="none">
+      <path d="M1240 215 L1350 215"/>
+      <path d="M1240 420 L1350 420"/>
+      <path d="M1240 560 L1350 560"/>
+    </g>
+    <g font-size="28" font-weight="700" fill="#555" text-anchor="middle">
+      <text x="1295" y="210">✗</text>
+      <text x="1295" y="415">✗</text>
+      <text x="1295" y="555">✗</text>
+    </g>
+
+    <!-- legend -->
+    <text x="470" y="755" font-size="16">──  calls / uses          ┄┄  throws / handles / uses          ✗  no conversion between record and entity</text>
+
+    <!-- ===== ZONES, BOTTOM BAND ===== -->
+    <rect x="28" y="770" width="472" height="380" rx="12" fill="none" stroke="#7b4fa0" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="46" y="798" font-size="21" font-weight="700" fill="#7b4fa0">domain/exceptions</text>
+    <text x="46" y="820" font-size="14" fill="#555">all extend RuntimeException</text>
+
+    <rect x="520" y="770" width="670" height="415" rx="12" fill="none" stroke="#2e7d4f" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="538" y="798" font-size="21" font-weight="700" fill="#2e7d4f">web/ · error handling</text>
+
+    <rect x="1210" y="770" width="600" height="430" rx="12" fill="none" stroke="#7a6a3a" stroke-width="2" stroke-dasharray="10 6"/>
+    <text x="1228" y="798" font-size="21" font-weight="700" fill="#7a6a3a">dto/ · service/</text>
+
+    <!-- ZONE E: exceptions -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#f3eefa">
+      <rect x="50" y="830" width="430" height="54" rx="6"/>
+      <rect x="50" y="892" width="430" height="54" rx="6"/>
+      <rect x="50" y="954" width="430" height="54" rx="6"/>
+      <rect x="50" y="1016" width="430" height="54" rx="6"/>
+      <rect x="50" y="1078" width="430" height="54" rx="6"/>
+    </g>
+    <g font-size="17" font-weight="700">
+      <text x="62" y="854">ExpenseNotFoundException</text>
+      <text x="62" y="916">MonthlyBudgetNotFoundException</text>
+      <text x="62" y="978">MonthlyBudgetAlreadyExistsException</text>
+      <text x="62" y="1040">YearMonthInvalidException</text>
+      <text x="62" y="1102">ExpenseDateOutsideMonthException</text>
+    </g>
+    <g font-size="13" fill="#555">
+      <text x="62" y="874">(message) · (message, cause)</text>
+      <text x="62" y="936">(message) · (message, cause)</text>
+      <text x="62" y="998">(message) · (message, cause)</text>
+      <text x="62" y="1060">(message) · (message, cause)</text>
+      <text x="62" y="1122">(message) · (message, cause)</text>
+    </g>
+
+    <!-- ZONE F: handler + ErrorCode -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#eefaf1">
+      <rect x="540" y="820" width="630" height="185" rx="6"/>
+      <rect x="540" y="1030" width="630" height="140" rx="6" fill="#fff"/>
+    </g>
+    <g font-size="15">
+      <text x="555" y="848" font-size="19" font-weight="700">GlobalExceptionHandler</text>
+      <text x="555" y="868" font-size="14" fill="#555">@RestControllerAdvice · extends ResponseEntityExceptionHandler</text>
+      <line x1="540" y1="876" x2="1170" y2="876" stroke="#2b2b2b"/>
+      <text x="555" y="900">handles the 5 domain exceptions → ErrorCode</text>
+      <text x="555" y="922">MethodArgumentTypeMismatchException → INVALID_REQUEST_PARAMETER</text>
+      <text x="555" y="944">overrides: malformed body, validation failure (field violations)</text>
+      <text x="555" y="966">Exception → log.error + INTERNAL_SERVER_ERROR</text>
+      <text x="555" y="988">builds ErrorResponse(code, message, violations)</text>
+    </g>
+    <g font-size="13">
+      <text x="855" y="1056" font-size="19" font-weight="700" text-anchor="middle">«enum» ErrorCode · HttpStatus + default message</text>
+      <text x="555" y="1082">EXPENSE_NOT_FOUND 404</text>
+      <text x="555" y="1100">MONTHLY_BUDGET_NOT_FOUND 404</text>
+      <text x="555" y="1118">MONTHLY_BUDGET_ALREADY_EXISTS 409</text>
+      <text x="555" y="1136">INVALID_YEAR_MONTH 400</text>
+      <text x="555" y="1154">EXPENSE_DATE_OUTSIDE_MONTH 400</text>
+      <text x="865" y="1082">MALFORMED_REQUEST_BODY 400</text>
+      <text x="865" y="1100">INVALID_REQUEST_PARAMETER 400</text>
+      <text x="865" y="1118">VALIDATION_ERROR 400</text>
+      <text x="865" y="1136">REQUEST_ERROR 400</text>
+      <text x="865" y="1154">INTERNAL_SERVER_ERROR 500</text>
+    </g>
+
+    <!-- ZONE G: dto + service -->
+    <g stroke="#2b2b2b" stroke-width="2" fill="#fbf6e6">
+      <rect x="1230" y="820" width="560" height="100" rx="6"/>
+      <rect x="1230" y="935" width="560" height="95" rx="6"/>
+      <rect x="1230" y="1045" width="560" height="90" rx="6" fill="#fff"/>
+      <rect x="1230" y="1150" width="560" height="40" rx="6" fill="#fff"/>
+    </g>
+    <g font-size="14">
+      <text x="1244" y="848" font-size="19" font-weight="700">ErrorResponse · FieldViolation</text>
+      <text x="1244" y="872">record ErrorResponse(code, message, violations)</text>
+      <text x="1244" y="894">record FieldViolation(field, message)</text>
+
+      <text x="1244" y="963" font-size="19" font-weight="700">request and response records</text>
+      <text x="1244" y="987">ExpenseRequest · ExpenseResponse</text>
+      <text x="1244" y="1009">MonthlyBudgetRequest · MonthlyBudgetResponse</text>
+
+      <text x="1244" y="1073" font-size="19" font-weight="700">SummaryService</text>
+      <text x="1244" y="1096">takes the domain records Expense, MonthlyBudget, MonthlyReflection</text>
+      <text x="1244" y="1118">called only from SummaryServiceTest</text>
+
+      <text x="1244" y="1176" font-size="15">HealthService · used by HealthController</text>
+    </g>
+
+    <!-- ARROWS BOTTOM BAND -->
+    <g stroke="#2b2b2b" stroke-width="2.5" fill="none">
+      <path d="M855 1005 L855 1030" marker-end="url(#arr)"/>
+      <path d="M1170 870 L1228 870" marker-end="url(#arr)"/>
+    </g>
+    <g stroke="#555" stroke-width="2.5" stroke-dasharray="8 6" fill="none">
+      <!-- controllers throw exceptions -->
+      <path d="M240 662 L240 768" marker-end="url(#arrg)"/>
+      <!-- handler handles exceptions -->
+      <path d="M538 905 L482 905" marker-end="url(#arrg)"/>
+      <!-- SummaryService uses records -->
+      <path d="M1790 1090 L1835 1090 L1835 745 L1745 745 L1745 727" marker-end="url(#arrg)"/>
+    </g>
+    <text x="252" y="700" font-size="15" fill="#555">throw</text>
+    <text x="510" y="896" font-size="14" fill="#555" text-anchor="middle">handles</text>
+
+    <!-- FOOTER -->
+    <rect x="40" y="1215" width="1780" height="75" rx="10" fill="#fff" stroke="#2b2b2b" stroke-width="2"/>
+    <text x="60" y="1246" font-size="19" font-weight="700">Flow now</text>
+    <text x="185" y="1246" font-size="18">POST /expenses → ExpenseController → ExpenseEntity → ExpenseRepository → Postgres. Errors: exception → GlobalExceptionHandler → ErrorCode → ErrorResponse.</text>
+    <text x="60" y="1274" font-size="18" fill="#555">The domain records and SummaryService do not take part in the HTTP flow.</text>
+  </g>
+</svg>
