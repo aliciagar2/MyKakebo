@@ -25,19 +25,19 @@ class ExpenseRepositoryTest {
     private TestEntityManager entityManager;
 
     @Test
-    void findByExpenseDateBetweenReturnsExpensesInDateRange() {
+    void findByExpenseDateBetweenAndCategoryFiltersByDateRangeAndCategory() {
         LocalDate startDate = LocalDate.of(2024, 1, 1);
         LocalDate endDate = LocalDate.of(2024, 1, 31);
-        ExpenseEntity expense1 = new ExpenseEntity(null, KakeboCategory.SURVIVAL, new BigDecimal("50.00"), LocalDate.of(2024, 1, 15), "Groceries");
-        ExpenseEntity expense2 = new ExpenseEntity(null, KakeboCategory.OPTIONAL, new BigDecimal("30.00"), LocalDate.of(2024, 1, 20), "Dining");
-        expenseRepository.save(expense1);
-        expenseRepository.save(expense2);
+        ExpenseEntity survival = new ExpenseEntity(null, KakeboCategory.SURVIVAL, new BigDecimal("50.00"), LocalDate.of(2024, 1, 15), "Groceries");
+        ExpenseEntity optional = new ExpenseEntity(null, KakeboCategory.OPTIONAL, new BigDecimal("30.00"), LocalDate.of(2024, 1, 20), "Dining");
+        expenseRepository.save(survival);
+        expenseRepository.save(optional);
 
-        List<ExpenseEntity> result = expenseRepository.findByExpenseDateBetween(startDate, endDate);
+        List<ExpenseEntity> result = expenseRepository.findByExpenseDateBetweenAndCategory(startDate, endDate, KakeboCategory.SURVIVAL);
 
-        assertThat(result).hasSize(2)
-                .extracting(ExpenseEntity::getExpenseDate)
-                .allMatch(date -> !date.isBefore(startDate) && !date.isAfter(endDate));
+        assertThat(result).hasSize(1)
+                .extracting(ExpenseEntity::getCategory)
+                .containsOnly(KakeboCategory.SURVIVAL);
     }
 
     @Test
@@ -53,19 +53,19 @@ class ExpenseRepositoryTest {
     }
 
     @Test
-    void findByExpenseDateBetweenAndCategoryFiltersByDateRangeAndCategory() {
+    void findByExpenseDateBetweenReturnsExpensesInDateRange() {
         LocalDate startDate = LocalDate.of(2024, 1, 1);
         LocalDate endDate = LocalDate.of(2024, 1, 31);
-        ExpenseEntity survival = new ExpenseEntity(null, KakeboCategory.SURVIVAL, new BigDecimal("50.00"), LocalDate.of(2024, 1, 15), "Groceries");
-        ExpenseEntity optional = new ExpenseEntity(null, KakeboCategory.OPTIONAL, new BigDecimal("30.00"), LocalDate.of(2024, 1, 20), "Dining");
-        expenseRepository.save(survival);
-        expenseRepository.save(optional);
+        ExpenseEntity expense1 = new ExpenseEntity(null, KakeboCategory.SURVIVAL, new BigDecimal("50.00"), LocalDate.of(2024, 1, 15), "Groceries");
+        ExpenseEntity expense2 = new ExpenseEntity(null, KakeboCategory.OPTIONAL, new BigDecimal("30.00"), LocalDate.of(2024, 1, 20), "Dining");
+        expenseRepository.save(expense1);
+        expenseRepository.save(expense2);
 
-        List<ExpenseEntity> result = expenseRepository.findByExpenseDateBetweenAndCategory(startDate, endDate, KakeboCategory.SURVIVAL);
+        List<ExpenseEntity> result = expenseRepository.findByExpenseDateBetween(startDate, endDate);
 
-        assertThat(result).hasSize(1)
-                .extracting(ExpenseEntity::getCategory)
-                .containsOnly(KakeboCategory.SURVIVAL);
+        assertThat(result).hasSize(2)
+                .extracting(ExpenseEntity::getExpenseDate)
+                .allMatch(date -> !date.isBefore(startDate) && !date.isAfter(endDate));
     }
 
     @Test

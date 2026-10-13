@@ -19,35 +19,6 @@ class MonthlyReflectionRepositoryTest {
     private MonthlyReflectionRepository monthlyReflectionRepository;
 
     @Test
-    void findByYearMonthReturnsCorrectReflection() {
-        YearMonth yearMonth = YearMonth.of(2024, 1);
-        MonthlyReflectionEntity reflection = new MonthlyReflectionEntity(
-                null, yearMonth,
-                new BigDecimal("3000.00"),
-                new BigDecimal("500.00"),
-                new BigDecimal("2500.00"),
-                "Good month"
-        );
-        monthlyReflectionRepository.save(reflection);
-
-        Optional<MonthlyReflectionEntity> result = monthlyReflectionRepository.findByYearMonth(yearMonth);
-
-        assertThat(result).isPresent()
-                .get()
-                .extracting(MonthlyReflectionEntity::getYearMonth)
-                .isEqualTo(yearMonth);
-    }
-
-    @Test
-    void findByYearMonthReturnsEmptyWhenReflectionNotFound() {
-        YearMonth searchYearMonth = YearMonth.of(2024, 5);
-
-        Optional<MonthlyReflectionEntity> result = monthlyReflectionRepository.findByYearMonth(searchYearMonth);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
     void findAllByOrderByYearMonthAscReturnsReflectionsInAscendingOrder() {
         MonthlyReflectionEntity reflection1 = new MonthlyReflectionEntity(
                 null, YearMonth.of(2024, 3),
@@ -83,5 +54,34 @@ class MonthlyReflectionRepositoryTest {
                         YearMonth.of(2024, 2),
                         YearMonth.of(2024, 3)
                 );
+    }
+
+    @Test
+    void findByYearMonthReturnsCorrectReflection() {
+        YearMonth yearMonth = YearMonth.of(2024, 1);
+        MonthlyReflectionEntity reflection = new MonthlyReflectionEntity(
+                null, yearMonth,
+                new BigDecimal("3000.00"),
+                new BigDecimal("500.00"),
+                new BigDecimal("2500.00"),
+                "Good month"
+        );
+        monthlyReflectionRepository.save(reflection);
+
+        Optional<MonthlyReflectionEntity> result = monthlyReflectionRepository.findByYearMonth(yearMonth);
+
+        assertThat(result).isPresent()
+                .get()
+                .extracting(MonthlyReflectionEntity::getYearMonth)
+                .isEqualTo(yearMonth);
+    }
+
+    @Test
+    void findByYearMonthReturnsEmptyWhenReflectionNotFound() {
+        YearMonth searchYearMonth = YearMonth.of(2024, 5);
+
+        Optional<MonthlyReflectionEntity> result = monthlyReflectionRepository.findByYearMonth(searchYearMonth);
+
+        assertThat(result).isEmpty();
     }
 }
