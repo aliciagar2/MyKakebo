@@ -70,6 +70,15 @@ class GlobalExceptionHandlerTest {
                 .andExpect(content().string(not(containsString("secret detail"))));
     }
 
+    @Test
+    void methodNotAllowedReturns405WithoutLeakingDetails() throws Exception {
+        mockMvc.perform(post("/test/expense-not-found"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("REQUEST_ERROR"))
+                .andExpect(jsonPath("$.message").value("The request could not be processed"))
+                .andExpect(content().string(not(containsString("not supported"))));
+    }
+
     @RestController
     @RequestMapping("/test")
     static class ThrowingController {

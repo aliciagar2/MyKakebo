@@ -10,7 +10,6 @@ import com.aliciagar2.mykakebo.dto.FieldViolation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -89,7 +88,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         Object responseBody = body != null
                 ? body
-                : new ErrorResponse(HttpStatus.valueOf(statusCode.value()).name(), ex.getMessage(), null);
+                : errorBody(statusCode.is5xxServerError() ? ErrorCode.INTERNAL_SERVER_ERROR : ErrorCode.REQUEST_ERROR);
         return ResponseEntity.status(statusCode).headers(headers).body(responseBody);
     }
 
