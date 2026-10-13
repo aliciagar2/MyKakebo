@@ -65,11 +65,18 @@ Ask the user first, and wait for an explicit yes, before you:
 - The pre-commit hook `gitleaks` scans staged changes for secrets. NEVER bypass it (no `--no-verify`).
 - If a secret has been committed or exposed: stop, tell the user immediately, and tell them to rotate it. Removing it from the latest commit is NOT enough, because it stays in the git history.
 
+## Code formatting
+
+- Imports: sorted alphabetically by fully qualified name, one block per file. A rename or move that changes a class's import line MUST re-sort that line into place, not just swap the name in place.
+- Members: test methods, and helper members that exist only to support tests (e.g. endpoints on an inner `@RestController` used by exception-handler tests), are ordered alphabetically by name within their class. A new test goes where its name sorts, not at the end of the file.
+- Files end with exactly one trailing newline.
+
 ## Git workflow and commits
 
 ### Always ask before committing
 
 - NEVER run `git commit` without asking the user first. This rule has no exceptions.
+- Before each commit, reformat every file you touched so it matches "Code formatting" above (import order, member order, trailing newline) — do this even if the change being committed is unrelated to formatting.
 - Before each commit:
   1. show `git status` and `git diff --stat`;
   2. propose the exact commit message;
