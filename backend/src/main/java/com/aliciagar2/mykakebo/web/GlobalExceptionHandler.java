@@ -34,6 +34,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(MonthlyBudgetAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleMonthlyBudgetAlreadyExists(MonthlyBudgetAlreadyExistsException ex) {
+        log.warn("Monthly budget already exists", ex);
         return buildResponse(ErrorCode.MONTHLY_BUDGET_ALREADY_EXISTS);
     }
 
