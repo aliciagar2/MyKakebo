@@ -46,6 +46,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void methodNotAllowedReturns405WithoutLeakingDetails() throws Exception {
+        mockMvc.perform(post("/test/expense-not-found"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("REQUEST_ERROR"))
+                .andExpect(jsonPath("$.message").value("The request could not be processed"))
+                .andExpect(content().string(not(containsString("not supported"))));
+    }
+
+    @Test
     void monthlyBudgetAlreadyExistsReturns409() throws Exception {
         mockMvc.perform(get("/test/budget-exists"))
                 .andExpect(status().isConflict())
@@ -68,15 +77,6 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
                 .andExpect(jsonPath("$.message").value("Something wrong happened"))
                 .andExpect(content().string(not(containsString("secret detail"))));
-    }
-
-    @Test
-    void methodNotAllowedReturns405WithoutLeakingDetails() throws Exception {
-        mockMvc.perform(post("/test/expense-not-found"))
-                .andExpect(status().isMethodNotAllowed())
-                .andExpect(jsonPath("$.code").value("REQUEST_ERROR"))
-                .andExpect(jsonPath("$.message").value("The request could not be processed"))
-                .andExpect(content().string(not(containsString("not supported"))));
     }
 
     @RestController
