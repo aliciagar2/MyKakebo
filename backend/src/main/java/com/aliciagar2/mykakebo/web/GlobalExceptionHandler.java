@@ -2,6 +2,7 @@ package com.aliciagar2.mykakebo.web;
 
 
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
 import com.aliciagar2.mykakebo.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExpenseNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleExpenseNotFound(ExpenseNotFoundException ex) {
         return buildResponse(ErrorCode.EXPENSE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(MonthlyBudgetAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleMonthlyBudgetAlreadyExists(MonthlyBudgetAlreadyExistsException ex) {
+        return buildResponse(ErrorCode.MONTHLY_BUDGET_ALREADY_EXISTS);
     }
 
     @ExceptionHandler(MonthlyBudgetNotFoundException.class)
