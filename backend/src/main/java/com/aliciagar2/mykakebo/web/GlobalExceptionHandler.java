@@ -2,6 +2,7 @@ package com.aliciagar2.mykakebo.web;
 
 
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.InvalidYearMonthException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
 import com.aliciagar2.mykakebo.dto.ErrorResponse;
@@ -25,6 +26,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MonthlyBudgetNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleMonthlyBudgetNotFoundException(MonthlyBudgetNotFoundException ex) {
         return buildResponse(ErrorCode.MONTHLY_BUDGET_NOT_FOUND);
+    }
+
+    @ExceptionHandler(InvalidYearMonthException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidYearMonth(InvalidYearMonthException ex) {
+        return buildResponse(ErrorCode.INVALID_YEAR_MONTH);
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(ErrorCode code) {

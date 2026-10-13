@@ -3,6 +3,7 @@ package com.aliciagar2.mykakebo.web;
 import com.aliciagar2.mykakebo.domain.ExpenseEntity;
 import com.aliciagar2.mykakebo.domain.KakeboCategory;
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.InvalidYearMonthException;
 import com.aliciagar2.mykakebo.dto.ExpenseRequest;
 import com.aliciagar2.mykakebo.dto.ExpenseResponse;
 import com.aliciagar2.mykakebo.repository.ExpenseRepository;
@@ -103,7 +104,7 @@ public class ExpenseController {
         try {
             return YearMonth.of(year, month);
         } catch (DateTimeException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid year/month: " + year + "/" + month, e);
+            throw new InvalidYearMonthException("Invalid year/month: " + year + "/" + month, e);
         }
     }
 
