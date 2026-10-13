@@ -33,43 +33,6 @@ class MonthlyBudgetControllerTest {
     }
 
     @Test
-    void getReturnsBudgetWithCalculatedAvailableToSpend() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 1);
-        when(monthlyBudgetRepository.findByYearMonth(ym))
-                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
-
-        mockMvc.perform(get("/api/months/2026/1/budget"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.income").value(3000.00))
-                .andExpect(jsonPath("$.fixedExpenses").value(1500.00))
-                .andExpect(jsonPath("$.savingsGoal").value(500.00))
-                .andExpect(jsonPath("$.availableToSpend").value(1000.00));
-    }
-
-    @Test
-    void createPersistsBudgetAndReturns201() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 3);
-        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class))).thenAnswer(invocation -> {
-            MonthlyBudgetEntity e = invocation.getArgument(0);
-            return budget(7L, e.getYearMonth(), e.getIncome().toPlainString(),
-                    e.getFixedExpenses().toPlainString(), e.getSavingsGoal().toPlainString());
-        });
-
-        String body = """
-                {"income":2000.00,"fixedExpenses":800.00,"savingsGoal":200.00}
-                """;
-
-        mockMvc.perform(post("/api/months/2026/3/budget")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(7))
-                .andExpect(jsonPath("$.availableToSpend").value(1000.00));
-    }
-
-    @Test
     void createAcceptsAllZeroAmounts() throws Exception {
         YearMonth ym = YearMonth.of(2026, 4);
         when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
@@ -112,70 +75,25 @@ class MonthlyBudgetControllerTest {
     }
 
     @Test
-    void getReturns400ForInvalidMonth() throws Exception {
-        mockMvc.perform(get("/api/months/2026/13/budget"))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(monthlyBudgetRepository);
-    }
-
-    @Test
-    void createReturns400ForInvalidMonth() throws Exception {
-        String body = """
-                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
-                """;
-
-        mockMvc.perform(post("/api/months/2026/0/budget")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(monthlyBudgetRepository);
-    }
-
-    @Test
-    void getReturns404WhenNoBudgetSetForMonth() throws Exception {
-        when(monthlyBudgetRepository.findByYearMonth(YearMonth.of(2026, 6))).thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/api/months/2026/6/budget"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void createReturns409WhenConcurrentRequestWinsTheRace() throws Exception {
-        // findByYearMonth passes (no budget yet), but a concurrent request inserts first,
-        // so save() hits the year_month unique constraint. Should still surface as 409, not 500.
-        YearMonth ym = YearMonth.of(2026, 7);
+    void createPersistsBudgetAndReturns201() throws Exception {
+        YearMonth ym = YearMonth.of(2026, 3);
         when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class))).thenAnswer(invocation -> {
+            MonthlyBudgetEntity e = invocation.getArgument(0);
+            return budget(7L, e.getYearMonth(), e.getIncome().toPlainString(),
+                    e.getFixedExpenses().toPlainString(), e.getSavingsGoal().toPlainString());
+        });
 
         String body = """
-                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                {"income":2000.00,"fixedExpenses":800.00,"savingsGoal":200.00}
                 """;
 
-        mockMvc.perform(post("/api/months/2026/7/budget")
+        mockMvc.perform(post("/api/months/2026/3/budget")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void createReturns409WhenBudgetAlreadyExistsForMonth() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 1);
-        when(monthlyBudgetRepository.findByYearMonth(ym))
-                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
-
-        String body = """
-                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
-                """;
-
-        mockMvc.perform(post("/api/months/2026/1/budget")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isConflict());
-
-        verify(monthlyBudgetRepository, never()).save(any());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(7))
+                .andExpect(jsonPath("$.availableToSpend").value(1000.00));
     }
 
     @Test
@@ -190,6 +108,14 @@ class MonthlyBudgetControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(monthlyBudgetRepository);
+    }
+
+    @Test
+    void createRejectsMalformedJsonBody() throws Exception {
+        mockMvc.perform(post("/api/months/2026/1/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{not valid json"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -231,10 +157,84 @@ class MonthlyBudgetControllerTest {
     }
 
     @Test
-    void createRejectsMalformedJsonBody() throws Exception {
+    void createReturns400ForInvalidMonth() throws Exception {
+        String body = """
+                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/0/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(monthlyBudgetRepository);
+    }
+
+    @Test
+    void createReturns409WhenBudgetAlreadyExistsForMonth() throws Exception {
+        YearMonth ym = YearMonth.of(2026, 1);
+        when(monthlyBudgetRepository.findByYearMonth(ym))
+                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
+
+        String body = """
+                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                """;
+
         mockMvc.perform(post("/api/months/2026/1/budget")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{not valid json"))
+                        .content(body))
+                .andExpect(status().isConflict());
+
+        verify(monthlyBudgetRepository, never()).save(any());
+    }
+
+    @Test
+    void createReturns409WhenConcurrentRequestWinsTheRace() throws Exception {
+        // findByYearMonth passes (no budget yet), but a concurrent request inserts first,
+        // so save() hits the year_month unique constraint. Should still surface as 409, not 500.
+        YearMonth ym = YearMonth.of(2026, 7);
+        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
+        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        String body = """
+                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
+                """;
+
+        mockMvc.perform(post("/api/months/2026/7/budget")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void getReturns400ForInvalidMonth() throws Exception {
+        mockMvc.perform(get("/api/months/2026/13/budget"))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(monthlyBudgetRepository);
+    }
+
+    @Test
+    void getReturns404WhenNoBudgetSetForMonth() throws Exception {
+        when(monthlyBudgetRepository.findByYearMonth(YearMonth.of(2026, 6))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/months/2026/6/budget"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getReturnsBudgetWithCalculatedAvailableToSpend() throws Exception {
+        YearMonth ym = YearMonth.of(2026, 1);
+        when(monthlyBudgetRepository.findByYearMonth(ym))
+                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
+
+        mockMvc.perform(get("/api/months/2026/1/budget"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.income").value(3000.00))
+                .andExpect(jsonPath("$.fixedExpenses").value(1500.00))
+                .andExpect(jsonPath("$.savingsGoal").value(500.00))
+                .andExpect(jsonPath("$.availableToSpend").value(1000.00));
     }
 }

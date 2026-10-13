@@ -35,6 +35,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void invalidRequestBodyReturns400WithFieldViolations() throws Exception {
+        mockMvc.perform(post("/test/validated")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("Request validation failed"))
+                .andExpect(jsonPath("$.violations[0].field").value("name"))
+                .andExpect(jsonPath("$.violations[0].message").value("must not be blank"));
+    }
+
+    @Test
     void monthlyBudgetAlreadyExistsReturns409() throws Exception {
         mockMvc.perform(get("/test/budget-exists"))
                 .andExpect(status().isConflict())
@@ -51,17 +62,6 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void invalidRequestBodyReturns400WithFieldViolations() throws Exception {
-        mockMvc.perform(post("/test/validated")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("Request validation failed"))
-                .andExpect(jsonPath("$.violations[0].field").value("name"))
-                .andExpect(jsonPath("$.violations[0].message").value("must not be blank"));
-    }
-
-    @Test
     void unexpectedExceptionReturns500WithoutLeakingDetails() throws Exception {
         mockMvc.perform(get("/test/crash"))
                 .andExpect(status().isInternalServerError())
@@ -73,11 +73,6 @@ class GlobalExceptionHandlerTest {
     @RestController
     @RequestMapping("/test")
     static class ThrowingController {
-        @GetMapping("/expense-not-found")
-        void expenseNotFound() {
-            throw new ExpenseNotFoundException("Expense not found");
-        }
-
         @GetMapping("/budget-exists")
         void budgetExists() {
             throw new MonthlyBudgetAlreadyExistsException("Budget already exists");
@@ -88,13 +83,18 @@ class GlobalExceptionHandlerTest {
             throw new MonthlyBudgetNotFoundException("Budget not found");
         }
 
-        @PostMapping("/validated")
-        void validated(@Valid @RequestBody SampleBody body) {
-        }
-
         @GetMapping("/crash")
         void crash() {
             throw new IllegalStateException();
+        }
+
+        @GetMapping("/expense-not-found")
+        void expenseNotFound() {
+            throw new ExpenseNotFoundException("Expense not found");
+        }
+
+        @PostMapping("/validated")
+        void validated(@Valid @RequestBody SampleBody body) {
         }
 
         record SampleBody(@NotBlank String name) {
