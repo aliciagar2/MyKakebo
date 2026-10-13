@@ -39,22 +39,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(MonthlyBudgetNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleMonthlyBudgetNotFoundException(MonthlyBudgetNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleMonthlyBudgetNotFoundException() {
         return buildResponse(ErrorCode.MONTHLY_BUDGET_NOT_FOUND);
     }
 
     @ExceptionHandler(YearMonthInvalidException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidYearMonth(YearMonthInvalidException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidYearMonth() {
         return buildResponse(ErrorCode.INVALID_YEAR_MONTH);
     }
 
     @ExceptionHandler(ExpenseDateOutsideMonthException.class)
-    public ResponseEntity<ErrorResponse> handleExpenseDateOutsideMonth(ExpenseDateOutsideMonthException ex) {
+    public ResponseEntity<ErrorResponse> handleExpenseDateOutsideMonth() {
         return buildResponse(ErrorCode.EXPENSE_DATE_OUTSIDE_MONTH);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidRequestParameter(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidRequestParameter() {
         return buildResponse(ErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
