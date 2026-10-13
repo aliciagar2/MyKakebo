@@ -105,6 +105,10 @@ Examples (from this repository's history):
 - Work on a short-lived topic branch with a descriptive name. NEVER commit directly to `main`.
 - Changes reach `main` through a pull request.
 
+### Pull request descriptions
+
+- End every PR description with `🤖 Description generated with [Claude Code](https://claude.com/claude-code)`, not the generic "Generated with" line.
+
 ## Naming: test methods
 
 - camelCase only. No underscores, no `test` prefix, no `@DisplayName`.
