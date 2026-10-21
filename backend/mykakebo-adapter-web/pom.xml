@@ -17,14 +17,6 @@
 			<version>${project.version}</version>
 		</dependency>
 
-		<!-- TEMPORARY: only needed until step 2 rewrites ExpenseController to depend on
-		     ExpenseService instead of ExpenseRepository/ExpenseEntity directly. Remove then. -->
-		<dependency>
-			<groupId>com.aliciagar2</groupId>
-			<artifactId>mykakebo-adapter-persistence-jpa</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
