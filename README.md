@@ -21,6 +21,9 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 | Expense REST endpoints (list/create/update/delete) | Implemented |
 | Monthly budget REST endpoints (create/read) | Implemented |
 | Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`) | Implemented |
+| Hexagonal architecture (Expense slice): port, service, JPA + in-memory adapters, 5-module reactor | Implemented |
+| ArchUnit boundary enforcement | Planned     |
+| Budget/Reflection slices converted to ports and adapters | Planned     |
 | Summary, reflection, and authentication endpoints | Planned     |
 | React + TypeScript frontend             | Planned     |
 | CI: GitHub Actions (tests + build), CodeQL, Dependabot | Implemented |
@@ -230,6 +233,48 @@ The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/
 
 The image listens on port `8080`.
 
+## Backend architecture: ports and adapters
+
+Branch `hex_1` converted the Expense slice to a ports-and-adapters architecture. This split `backend/` into a five-module Maven reactor, proving the pattern on one slice before the Budget and Reflection slices follow later.
+
+```mermaid
+flowchart LR
+    subgraph adapters["Adapters: depend on domain, never the reverse"]
+        web["mykakebo-adapter-web<br/>ExpenseController"]
+        jpa["mykakebo-adapter-persistence-jpa<br/>JpaExpenseRepositoryAdapter"]
+        memory["mykakebo-adapter-persistence-memory<br/>InMemoryExpenseRepositoryAdapter<br/>(test only)"]
+    end
+    domain["mykakebo-domain<br/>Expense, ExpenseRepositoryPort, ExpenseService<br/>no Spring or JPA on its classpath"]
+    bootstrap["mykakebo-bootstrap<br/>MykakeboApplication<br/>MonthlyBudget/MonthlyReflection (not yet converted)<br/>Flyway migrations"]
+
+    web --> domain
+    jpa --> domain
+    memory --> domain
+    bootstrap --> web
+    bootstrap --> jpa
+    bootstrap --> domain
+```
+
+`mykakebo-domain` defines two things. `ExpenseRepositoryPort` is an interface. It states what the business logic needs from storage. `ExpenseService` is the use case. It calls that interface. Neither class imports Spring or JPA, and the module carries no such dependency on its classpath at all.
+
+`ExpenseController`, in `mykakebo-adapter-web`, only translates HTTP requests in and domain objects out. It calls `ExpenseService`. `ExpenseService` calls the port.
+
+`JpaExpenseRepositoryAdapter` implements that port for the real database. It turns Spring's `ObjectOptimisticLockingFailureException` into a framework-free `ExpenseConcurrentlyModifiedException`. `mykakebo-bootstrap` wires this adapter by hand, in `ExpenseServiceConfiguration`, and is the only module that produces an executable jar.
+
+`InMemoryExpenseRepositoryAdapter`, in `mykakebo-adapter-persistence-memory`, is a second adapter for the same port. A map backs it, with no database. `ExpenseServiceTest` uses it to run the business rules with no Spring context. `mykakebo-bootstrap` never depends on this module, so the real application only ever sees one adapter bean.
+
+Done:
+
+- The Expense slice is fully converted: port, service, JPA adapter, in-memory test adapter, and a rewired controller.
+- `mykakebo-bootstrap` produces the only executable jar.
+- `./mvnw verify` and `backend/Dockerfile` already match the new five-module layout.
+
+Pending:
+
+- `MonthlyBudget` and `MonthlyReflection` still use the old repository-direct style. Their conversion is planned as separate work.
+- ArchUnit rules to enforce the module boundaries in CI, not only through Maven's dependency structure.
+- New rows in `CLAUDE.md`'s naming table for Port, Adapter, Service, and Configuration.
+
 ## Project structure
 
 ```text
@@ -362,7 +407,7 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 3. ~~Expense and budget REST endpoints~~ Done.
 4. ~~CI (tests, CodeQL, Dependabot), k3s manifest for the API, Java 21 toolchain~~ Done.
 5. ~~Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`)~~ Done.
-6. Hexagonal refactor: ports and adapters, boundaries enforced by ArchUnit.
+6. ~~Hexagonal refactor for the Expense slice: port, service, JPA and in-memory adapters~~ Done, see [Backend architecture](#backend-architecture-ports-and-adapters). Still pending: the same refactor for Budget/Reflection, and boundaries enforced by ArchUnit.
 7. Multi-user households with roles (owner, editor, viewer, guest), Spring Security + JWT.
 8. Summary and reflection endpoints, CORS.
 9. PostgreSQL in k3s, Testcontainers, JaCoCo coverage gate.
