@@ -26,11 +26,16 @@ Run everything from the repository root unless a `cd` is shown.
 | Create local env file (first time only) | `cp .env.example .env`, then set `DB_PASSWORD` |
 | Start local Postgres | `docker compose up -d postgres` |
 | Stop local Postgres (keeps data) | `docker compose down` |
-| Run the API | `cd backend && ./mvnw spring-boot:run` |
+| Install all modules to the local repo (first time, or after changing a module another one depends on) | `cd backend && ./mvnw install -DskipTests` |
+| Run the API | `cd backend/mykakebo-bootstrap && ../mvnw spring-boot:run` |
 | Run all tests | `cd backend && ./mvnw test` |
-| Run one test class | `cd backend && ./mvnw test -Dtest=ExpenseControllerTest` |
-| Run one test method | `cd backend && ./mvnw test -Dtest=ExpenseControllerTest#listReturnsExpensesInMonth` |
+| Run one test class | `cd backend && ./mvnw test -pl mykakebo-adapter-web -am -Dtest=ExpenseControllerTest -Dsurefire.failIfNoSpecifiedTests=false` |
+| Run one test method | `cd backend && ./mvnw test -pl mykakebo-adapter-web -am -Dtest=ExpenseControllerTest#listReturnsExpensesInMonth -Dsurefire.failIfNoSpecifiedTests=false` |
 | Full build, as CI does | `cd backend && ./mvnw verify` |
+
+- `backend/` is a 5-module Maven reactor (`mykakebo-domain`, `mykakebo-adapter-persistence-jpa`, `mykakebo-adapter-persistence-memory`, `mykakebo-adapter-web`, `mykakebo-bootstrap`). Some goals are not normal lifecycle phases, such as `spring-boot:run`. Running one of these with `-pl <module> -am` from the reactor root runs it against the root aggregator instead. This is a genuine Maven quirk, not a typo. To run it correctly, `cd` into the module directory and invoke `../mvnw` directly, as in "Run the API" above.
+- For "Run one test class"/"Run one test method", replace `mykakebo-adapter-web` with the module that actually contains the class. Find it with `grep -rl <ClassName> backend/*/src`.
+- `-Dsurefire.failIfNoSpecifiedTests=false` is required with `-am`. It also runs Surefire on every upstream module `-am` builds, and those do not contain the class you named.
 
 - NEVER run `docker compose down -v`: it deletes the Postgres data volume.
 - The app reads `DB_URL` (default `jdbc:postgresql://localhost:5432/kakebo`), `DB_USERNAME` and `DB_PASSWORD`.
