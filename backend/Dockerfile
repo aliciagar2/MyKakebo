@@ -7,6 +7,6 @@ RUN mvn clean package -DskipTests
 # Stage 2
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar /mykakebo.jar
+COPY --from=build /app/mykakebo-bootstrap/target/*.jar /mykakebo.jar
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/mykakebo.jar"]
