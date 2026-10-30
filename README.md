@@ -235,7 +235,7 @@ The image listens on port `8080`.
 
 ## Backend architecture: ports and adapters
 
-Branch `hex_1` converted the Expense slice to a ports-and-adapters architecture. This split `backend/` into a five-module Maven reactor, proving the pattern on one slice before the Budget and Reflection slices follow later.
+The hexagonal architecture conversion turned the Expense slice into a ports-and-adapters design. This split `backend/` into a five-module Maven reactor, proving the pattern on one slice before the Budget and Reflection slices follow later.
 
 ```mermaid
 flowchart LR
@@ -274,6 +274,82 @@ Pending:
 - `MonthlyBudget` and `MonthlyReflection` still use the old repository-direct style. Their conversion is planned as separate work.
 - ArchUnit rules to enforce the module boundaries in CI, not only through Maven's dependency structure.
 - New rows in `CLAUDE.md`'s naming table for Port, Adapter, Service, and Configuration.
+
+## Expense classes: before and after the hexagonal conversion
+
+[The Kakebo model](#the-kakebo-model) above shows the domain records and does not change. This section shows how the Expense slice's classes connect to each other, before and after the hexagonal architecture conversion, and why the connections changed.
+
+Before the conversion, `ExpenseController` called Spring Data's `ExpenseRepository` directly. The controller held the business rules. It parsed the year and month, checked the date range, and turned `ObjectOptimisticLockingFailureException` into a domain exception.
+
+```mermaid
+classDiagram
+    class ExpenseController {
+        -ExpenseRepository expenseRepository
+        +list(...)
+        +create(...)
+        +update(...)
+        +delete(...)
+    }
+    class ExpenseRepository {
+        <<Spring Data JPA>>
+    }
+    class ExpenseEntity {
+        <<JPA entity>>
+    }
+    ExpenseController --> ExpenseRepository
+    ExpenseRepository --> ExpenseEntity
+```
+
+After the conversion, `ExpenseController` calls `ExpenseService`. `ExpenseService` holds the business rules and calls `ExpenseRepositoryPort`, an interface. Two classes implement that interface. `JpaExpenseRepositoryAdapter` talks to the real database. `InMemoryExpenseRepositoryAdapter` backs a map in memory and exists only for tests. Neither `ExpenseService` nor `ExpenseRepositoryPort` imports Spring or JPA.
+
+```mermaid
+classDiagram
+    class ExpenseController {
+        -ExpenseService expenseService
+        +list(...)
+        +create(...)
+        +update(...)
+        +delete(...)
+    }
+    class ExpenseService {
+        -ExpenseRepositoryPort expenseRepositoryPort
+        +list(...)
+        +create(...)
+        +update(...)
+        +delete(...)
+    }
+    class ExpenseRepositoryPort {
+        <<interface>>
+        +findByDateRange(...)
+        +findByDateRangeAndCategory(...)
+        +findById(...)
+        +save(...)
+        +existsById(...)
+        +deleteById(...)
+    }
+    class JpaExpenseRepositoryAdapter {
+        -ExpenseRepository expenseRepository
+        -ExpenseEntityMapper mapper
+    }
+    class InMemoryExpenseRepositoryAdapter {
+        -Map~Long, Expense~ expensesById
+    }
+    class ExpenseEntity {
+        <<JPA entity>>
+    }
+
+    ExpenseController --> ExpenseService
+    ExpenseService --> ExpenseRepositoryPort
+    JpaExpenseRepositoryAdapter ..|> ExpenseRepositoryPort
+    InMemoryExpenseRepositoryAdapter ..|> ExpenseRepositoryPort
+    JpaExpenseRepositoryAdapter --> ExpenseEntity
+```
+
+The shape changed for three reasons.
+
+- `ExpenseService` now depends on an interface it owns, `ExpenseRepositoryPort`, not on a Spring Data class. The business rules no longer import a framework.
+- `ExpenseServiceTest` runs the business rules against `InMemoryExpenseRepositoryAdapter`, with no Spring context and no database. The old `ExpenseController`, tied to `ExpenseRepository`, needed a database or a mock for the same rules.
+- `JpaExpenseRepositoryAdapter` is now the only class that touches JPA for expenses. A future storage change only touches that one adapter, not the controller or the business rules.
 
 ## Project structure
 
