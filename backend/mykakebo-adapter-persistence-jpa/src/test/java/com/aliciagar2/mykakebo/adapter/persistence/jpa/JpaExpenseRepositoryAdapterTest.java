@@ -41,6 +41,10 @@ class JpaExpenseRepositoryAdapterTest {
         verify(expenseRepository).deleteById(5L);
     }
 
+    private static ExpenseEntity entity(Long id, KakeboCategory category) {
+        return new ExpenseEntity(id, category, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+    }
+
     @Test
     void existsByIdDelegatesToRepository() {
         when(expenseRepository.existsById(5L)).thenReturn(true);
@@ -48,14 +52,17 @@ class JpaExpenseRepositoryAdapterTest {
         assertThat(adapter.existsById(5L)).isTrue();
     }
 
+    private static Expense expense(Long id, KakeboCategory category) {
+        return new Expense(
+                id, null, YearMonth.of(2024, 1), category, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+    }
+
     @Test
     void findByDateRangeAndCategoryMapsEntitiesToDomain() {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);
-        ExpenseEntity entity = new ExpenseEntity(
-                1L, KakeboCategory.OPTIONAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.OPTIONAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        ExpenseEntity entity = entity(1L, KakeboCategory.OPTIONAL);
+        Expense expense = expense(1L, KakeboCategory.OPTIONAL);
         when(expenseRepository.findByExpenseDateBetweenAndCategory(start, end, KakeboCategory.OPTIONAL))
                 .thenReturn(List.of(entity));
         when(mapper.toDomain(entity)).thenReturn(expense);
@@ -69,10 +76,8 @@ class JpaExpenseRepositoryAdapterTest {
     void findByDateRangeMapsEntitiesToDomain() {
         LocalDate start = LocalDate.of(2024, 1, 1);
         LocalDate end = LocalDate.of(2024, 1, 31);
-        ExpenseEntity entity = new ExpenseEntity(
-                1L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        ExpenseEntity entity = entity(1L, KakeboCategory.SURVIVAL);
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
         when(expenseRepository.findByExpenseDateBetween(start, end)).thenReturn(List.of(entity));
         when(mapper.toDomain(entity)).thenReturn(expense);
 
@@ -90,10 +95,8 @@ class JpaExpenseRepositoryAdapterTest {
 
     @Test
     void findByIdReturnsMappedExpenseWhenFound() {
-        ExpenseEntity entity = new ExpenseEntity(
-                1L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        ExpenseEntity entity = entity(1L, KakeboCategory.SURVIVAL);
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
         when(expenseRepository.findById(1L)).thenReturn(Optional.of(entity));
         when(mapper.toDomain(entity)).thenReturn(expense);
 
@@ -102,14 +105,10 @@ class JpaExpenseRepositoryAdapterTest {
 
     @Test
     void saveCreatesNewEntityWhenIdIsNull() {
-        Expense newExpense = new Expense(null, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        ExpenseEntity newEntity = new ExpenseEntity(
-                null, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        ExpenseEntity savedEntity = new ExpenseEntity(
-                1L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        Expense savedExpense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        Expense newExpense = expense(null, KakeboCategory.SURVIVAL);
+        ExpenseEntity newEntity = entity(null, KakeboCategory.SURVIVAL);
+        ExpenseEntity savedEntity = entity(1L, KakeboCategory.SURVIVAL);
+        Expense savedExpense = expense(1L, KakeboCategory.SURVIVAL);
         when(mapper.toNewEntity(newExpense)).thenReturn(newEntity);
         when(expenseRepository.save(newEntity)).thenReturn(savedEntity);
         when(mapper.toDomain(savedEntity)).thenReturn(savedExpense);
@@ -121,10 +120,8 @@ class JpaExpenseRepositoryAdapterTest {
 
     @Test
     void saveRejectsWhenOptimisticLockFails() {
-        Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
-        ExpenseEntity entity = new ExpenseEntity(
-                1L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
+        ExpenseEntity entity = entity(1L, KakeboCategory.SURVIVAL);
         when(expenseRepository.findById(1L)).thenReturn(Optional.of(entity));
         when(expenseRepository.save(entity)).thenThrow(new ObjectOptimisticLockingFailureException("", null));
 
@@ -133,8 +130,7 @@ class JpaExpenseRepositoryAdapterTest {
 
     @Test
     void saveRejectsWhenRowNotFound() {
-        Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
-                new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
         when(expenseRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adapter.save(expense)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
