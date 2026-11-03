@@ -95,7 +95,7 @@ class InMemoryExpenseRepositoryAdapterTest {
     }
 
     @Test
-    void saveThrowsConcurrentlyModifiedExceptionWhenIdNotFound() {
+    void saveRejectsWhenIdNotFound() {
         Expense unknown = expense(123L, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL);
 
         assertThatThrownBy(() -> adapter.save(unknown)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);

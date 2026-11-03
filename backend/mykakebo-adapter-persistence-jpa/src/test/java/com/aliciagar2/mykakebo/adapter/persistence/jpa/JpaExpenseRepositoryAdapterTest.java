@@ -120,7 +120,7 @@ class JpaExpenseRepositoryAdapterTest {
     }
 
     @Test
-    void saveThrowsConcurrentlyModifiedExceptionWhenOptimisticLockFails() {
+    void saveRejectsWhenOptimisticLockFails() {
         Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
                 new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
         ExpenseEntity entity = new ExpenseEntity(
@@ -132,7 +132,7 @@ class JpaExpenseRepositoryAdapterTest {
     }
 
     @Test
-    void saveThrowsConcurrentlyModifiedExceptionWhenRowNotFound() {
+    void saveRejectsWhenRowNotFound() {
         Expense expense = new Expense(1L, null, YearMonth.of(2024, 1), KakeboCategory.SURVIVAL,
                 new BigDecimal("10.00"), LocalDate.of(2024, 1, 10), "note");
         when(expenseRepository.findById(1L)).thenReturn(Optional.empty());
