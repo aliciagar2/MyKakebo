@@ -36,6 +36,10 @@ class InMemoryExpenseRepositoryAdapterTest {
         assertThat(adapter.existsById(saved.id())).isTrue();
     }
 
+    private static Expense expense(Long id, LocalDate date, KakeboCategory category) {
+        return new Expense(id, null, YearMonth.from(date), category, new BigDecimal("10.00"), date, "note");
+    }
+
     @Test
     void findByDateRangeAndCategoryFiltersByCategoryAndRange() {
         adapter.save(expense(null, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL));
@@ -99,9 +103,5 @@ class InMemoryExpenseRepositoryAdapterTest {
         Expense unknown = expense(123L, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL);
 
         assertThatThrownBy(() -> adapter.save(unknown)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
-    }
-
-    private static Expense expense(Long id, LocalDate date, KakeboCategory category) {
-        return new Expense(id, null, YearMonth.from(date), category, new BigDecimal("10.00"), date, "note");
     }
 }
