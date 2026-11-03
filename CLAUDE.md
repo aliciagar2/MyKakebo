@@ -2,8 +2,8 @@
 
 ## About this file
 
-- This file is ALWAYS written in English, even when the conversation is in Spanish.
-- One topic per section. Add new rules to the section they belong to, or create a new section; never mix topics.
+- When the conversation is in Spanish, write this file in English.
+- One topic per section. Add new rules to the section they belong to, or create a new section. Never mix topics.
 
 ## Tech stack
 
@@ -44,7 +44,7 @@ Run everything from the repository root unless a `cd` is shown.
 
 - Schema changes happen ONLY through Flyway migrations. Hibernate runs with `ddl-auto: validate` and MUST NOT create or alter tables.
 - NEVER edit, rename, reorder or delete a migration that already exists (`V1`, `V2`, `V3`, ...). To change the schema, add a NEW migration with the next version number.
-- File name format: `V<number>__<snake_case_description>.sql` (double underscore), for example `V2__rename_reserved_columns.sql`.
+- File name format: `V<number>__<snake_case_description>.sql` (`__`, not `_`), for example `V2__rename_reserved_columns.sql`.
 - Any change to a `@Entity` that affects a column or table MUST come with its migration in the same change.
 - Every migration MUST apply cleanly on top of the previous ones, in order, on an empty database.
 
@@ -52,14 +52,14 @@ Run everything from the repository root unless a `cd` is shown.
 
 Ask the user first, and wait for an explicit yes, before you:
 
-- read, print, edit or delete `.env` (see "Secrets and credentials");
-- change dependency or plugin versions in `backend/pom.xml`, or add or remove a dependency;
-- edit `.github/` (workflows, `CODEOWNERS`, `dependabot.yml`), `LICENSE`, `.pre-commit-config.yaml` or `.gitignore`;
-- edit `.idea/` or `.vscode/` (IDE settings);
-- delete or rename files, or move classes between packages;
-- do a refactor that touches more than the files the task is about;
-- change a test so that it passes (a failing test is information: explain it first);
-- run destructive commands: `docker compose down -v`, `rm -rf`, dropping or truncating a database.
+- Read, print, edit, or delete `.env` (see "Secrets and credentials" below).
+- Change dependency or plugin versions in `backend/pom.xml`, or add or remove a dependency.
+- Edit `.github/` (workflows, `CODEOWNERS`, `dependabot.yml`), `LICENSE`, `.pre-commit-config.yaml`, or `.gitignore`.
+- Edit `.idea/` or `.vscode/` (IDE configuration).
+- Delete or rename files, or move classes between packages.
+- Do a refactor that touches more than the files the task is about.
+- Change a test so that it passes. A failing test is information: explain it first.
+- Run destructive commands: `docker compose down -v`, `rm -rf`, or drop or truncate a database.
 
 ## Secrets and credentials
 
@@ -68,12 +68,12 @@ Ask the user first, and wait for an explicit yes, before you:
 - NEVER print, log, quote or copy the value of a secret in a reply, a file, a commit message or a command. When listing `.env`, show variable names only.
 - Kubernetes `Secret` manifests in `k8s/` MUST NOT contain real values.
 - The pre-commit hook `gitleaks` scans staged changes for secrets. NEVER bypass it (no `--no-verify`).
-- If a secret has been committed or exposed: stop, tell the user immediately, and tell them to rotate it. Removing it from the latest commit is NOT enough, because it stays in the git history.
+- If a secret ends up committed or exposed, stop, tell the user immediately, and tell them to rotate it. Removing it from the latest commit is NOT enough, because it stays in the git history.
 
 ## Code formatting
 
 - Imports: sorted alphabetically by fully qualified name, one block per file. A rename or move that changes a class's import line MUST re-sort that line into place, not just swap the name in place.
-- Members: test methods, and helper members that exist only to support tests (e.g. endpoints on an inner `@RestController` used by exception-handler tests), are ordered alphabetically by name within their class. A new test goes where its name sorts, not at the end of the file.
+- Members: test methods, and helper members that exist only to support tests, are ordered alphabetically by name within their class. One example is an endpoint on an inner `@RestController` used only by exception-handler tests. A new test goes where its name sorts, not at the end of the file.
 - Files end with exactly one trailing newline.
 
 ## Git workflow and commits
@@ -81,11 +81,11 @@ Ask the user first, and wait for an explicit yes, before you:
 ### Always ask before committing
 
 - NEVER run `git commit` without asking the user first. This rule has no exceptions.
-- Before each commit, reformat every file you touched so it matches "Code formatting" above (import order, member order, trailing newline) — do this even if the change being committed is unrelated to formatting.
-- Before each commit:
-  1. show `git status` and `git diff --stat`;
-  2. propose the exact commit message;
-  3. wait for an explicit yes.
+- Reformat every file you touched so it matches "Code formatting" above (import order, member order, trailing newline) before each commit. Do this even for a change unrelated to formatting.
+- Before each commit, follow these steps:
+  1. Show `git status` and `git diff --stat`.
+  2. Propose the exact commit message.
+  3. Wait for an explicit yes.
 - An approval covers ONE commit only. Ask again for the next one.
 - Also ask before `git push`, `git commit --amend`, `git rebase`, `git reset`, `git stash drop`, deleting a branch, or any force operation.
 - NEVER use `--no-verify`. If a pre-commit hook fails (gitleaks, checkstyle, whitespace, large files), fix the cause.
@@ -116,7 +116,7 @@ Examples (from this repository's history):
 
 ## Naming: test methods
 
-- camelCase only. No underscores, no `test` prefix, no `@DisplayName`.
+- camelCase only. No `_`, no `test` prefix, no `@DisplayName`.
 - Structure: `<actionOrSubject><Outcome>[When<Condition>]`
   - `listReturnsExpensesInMonth`
   - `updateReturns404WhenExpenseDoesNotExist`
