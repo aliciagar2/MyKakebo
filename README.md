@@ -268,12 +268,13 @@ Done:
 - The Expense slice is fully converted: port, service, JPA adapter, in-memory test adapter, and a rewired controller.
 - `mykakebo-bootstrap` produces the only executable jar.
 - `./mvnw verify` and `backend/Dockerfile` already match the new five-module layout.
+- `CLAUDE.md`'s naming table has rows for Port, Adapter, the hexagonal use-case Service, and Configuration.
+- Dedicated unit tests for every piece of logic the conversion introduced: `ExpenseEntityMapper`, `JpaExpenseRepositoryAdapter`, and `InMemoryExpenseRepositoryAdapter` (see [Run the tests](#run-the-tests)).
 
 Pending:
 
 - `MonthlyBudget` and `MonthlyReflection` still use the old repository-direct style. Their conversion is planned as separate work.
 - ArchUnit rules to enforce the module boundaries in CI, not only through Maven's dependency structure.
-- New rows in `CLAUDE.md`'s naming table for Port, Adapter, Service, and Configuration.
 
 ## Expense classes: before and after the hexagonal conversion
 
@@ -420,13 +421,18 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 64, Failures: 0, Errors: 0`.
+Expected result: `Tests run: 124, Failures: 0, Errors: 0`.
 
 - `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
 - `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
 - `ExpenseRepositoryTest` (4 tests), `MonthlyBudgetRepositoryTest` (3 tests), and `MonthlyReflectionRepositoryTest` (3 tests) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback. `ExpenseRepositoryTest` also asserts the `@Version`-backed optimistic-locking contract directly: saving a detached `ExpenseEntity` whose row was deleted out from under it throws `ObjectOptimisticLockingFailureException`.
 - `ExpenseControllerTest` (23 tests) and `MonthlyBudgetControllerTest` (14 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered, including the invalid-month, date-outside-month, concurrent-update, and concurrent-create races.
 - `GlobalExceptionHandlerTest` (6 tests) drives `GlobalExceptionHandler` directly against a dedicated test controller, covering every mapped exception's status/`ErrorCode`, the field-violation body for a failed `@Valid` request, and that the 500 and 405 fallbacks never leak the original exception message.
+- `ExpenseEntityMapperTest` (5 tests) covers the `Expense`↔`ExpenseEntity` mapping, including that `monthYear` is derived from the expense date and that `applyTo` never touches the entity's id.
+- `JpaExpenseRepositoryAdapterTest` (10 tests) mocks `ExpenseRepository` and `ExpenseEntityMapper` to exercise `JpaExpenseRepositoryAdapter` in isolation: create vs. update branching on `save`, and both ways a concurrent change surfaces as `ExpenseConcurrentlyModifiedException` (a deleted row, or `ObjectOptimisticLockingFailureException` from the database).
+- `InMemoryExpenseRepositoryAdapterTest` (10 tests) covers the same adapter contract against the in-memory map directly: sequential id assignment, the same concurrency exception, and inclusive date-range/category filtering.
+- `BudgetAllocationTest` (3 tests), `MonthlyBudgetTest` (2 tests), and `YearMonthConverterTest` (4 tests) cover the domain classes with real logic: the compact constructor's percentage-sum validation, the `availableToSpend` calculation, and the JPA `YearMonth`↔`String` conversion.
+- `ExpenseRequestTest` (6 tests) and `MonthlyBudgetRequestTest` (8 tests) assert that each Bean Validation constraint on the two request DTOs actually rejects invalid input, not only that the annotations are present.
 
 ## Run the application
 
