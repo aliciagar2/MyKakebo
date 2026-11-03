@@ -15,6 +15,18 @@ class ExpenseEntityMapperTest {
     private final ExpenseEntityMapper mapper = new ExpenseEntityMapper();
 
     @Test
+    void applyToLeavesEntityIdUnchanged() {
+        ExpenseEntity entity = new ExpenseEntity(
+                7L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 1), "original");
+        Expense expense = new Expense(99L, null, YearMonth.of(2024, 2), KakeboCategory.OPTIONAL,
+                new BigDecimal("20.00"), LocalDate.of(2024, 2, 10), "updated");
+
+        mapper.applyTo(expense, entity);
+
+        assertThat(entity.getId()).isEqualTo(7L);
+    }
+
+    @Test
     void applyToUpdatesEntityFieldsFromExpense() {
         ExpenseEntity entity = new ExpenseEntity(
                 7L, KakeboCategory.SURVIVAL, new BigDecimal("10.00"), LocalDate.of(2024, 1, 1), "original");
@@ -23,7 +35,6 @@ class ExpenseEntityMapperTest {
 
         mapper.applyTo(expense, entity);
 
-        assertThat(entity.getId()).isEqualTo(7L);
         assertThat(entity.getCategory()).isEqualTo(KakeboCategory.OPTIONAL);
         assertThat(entity.getAmount()).isEqualTo(new BigDecimal("20.00"));
         assertThat(entity.getExpenseDate()).isEqualTo(LocalDate.of(2024, 2, 10));
