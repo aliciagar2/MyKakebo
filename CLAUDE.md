@@ -134,7 +134,10 @@ Examples (from this repository's history):
 | Kind | Rule | Examples |
 |---|---|---|
 | Controller | `<Resource>Controller`, in `web/` | `ExpenseController` |
-| Service | `<Name>Service`, in `service/` | `SummaryService` |
+| Service | `<Name>Service`, in `service/` (plain Spring bean) or in `application/` (hexagonal use case, zero Spring/JPA) | `SummaryService`, `ExpenseService` |
+| Port | `<Entity>RepositoryPort`, interface, in `application/port/` | `ExpenseRepositoryPort` |
+| Adapter | `<Technology><Entity>RepositoryAdapter`, implements the port, in `adapter/persistence/<technology>/` | `JpaExpenseRepositoryAdapter`, `InMemoryExpenseRepositoryAdapter` |
+| Configuration | `<Name>Configuration`, annotated `@Configuration`, in `config/` | `ExpenseServiceConfiguration` |
 | Repository | `<Entity without "Entity">Repository`, in `repository/` | `ExpenseRepository` |
 | JPA entity | `<Name>Entity`, annotated `@Entity` | `ExpenseEntity` |
 | Domain record | plain noun, no suffix | `Expense`, `MonthlyBudget` |
