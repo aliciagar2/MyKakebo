@@ -124,6 +124,7 @@ Examples (from this repository's history):
 - Verbs for the outcome:
   - `Returns<status>` for HTTP responses (`createReturns409...`)
   - `Rejects` for validation failures (`createRejectsNegativeSavingsGoal`)
+  - `Aborts` for concurrency conflicts (`saveAbortsWhenOptimisticLockFails`)
   - `Persists` for writes (`createPersistsExpenseAndReturns201`)
   - `Accepts` for valid boundary values (`createAcceptsSmallestPositiveAmount`)
 - One behavior per test.

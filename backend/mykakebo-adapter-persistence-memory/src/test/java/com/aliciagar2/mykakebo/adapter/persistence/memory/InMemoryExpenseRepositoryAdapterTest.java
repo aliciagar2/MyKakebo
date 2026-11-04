@@ -79,6 +79,13 @@ class InMemoryExpenseRepositoryAdapterTest {
     }
 
     @Test
+    void saveAbortsWhenIdNotFound() {
+        Expense unknown = expense(123L, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL);
+
+        assertThatThrownBy(() -> adapter.save(unknown)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
+    }
+
+    @Test
     void saveAssignsSequentialIdsWhenIdIsNull() {
         Expense first = adapter.save(expense(null, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL));
         Expense second = adapter.save(expense(null, LocalDate.of(2024, 1, 11), KakeboCategory.SURVIVAL));
@@ -96,12 +103,5 @@ class InMemoryExpenseRepositoryAdapterTest {
 
         assertThat(result).isEqualTo(updated);
         assertThat(adapter.findById(saved.id())).contains(updated);
-    }
-
-    @Test
-    void saveRejectsWhenIdNotFound() {
-        Expense unknown = expense(123L, LocalDate.of(2024, 1, 10), KakeboCategory.SURVIVAL);
-
-        assertThatThrownBy(() -> adapter.save(unknown)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
     }
 }
