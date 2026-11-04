@@ -2,7 +2,7 @@
 
 ## About this file
 
-- When the conversation is in Spanish, write this file in English.
+- Always write this file in English, no matter the conversation's language.
 - One topic per section. Add new rules to the section they belong to, or create a new section. Never mix topics.
 
 ## Tech stack
