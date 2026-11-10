@@ -2,7 +2,7 @@
 
 ## About this file
 
-- When the conversation is in Spanish, write this file in English.
+- Always write this file in English, no matter the conversation's language.
 - One topic per section. Add new rules to the section they belong to, or create a new section. Never mix topics.
 
 ## Tech stack
@@ -124,6 +124,7 @@ Examples (from this repository's history):
 - Verbs for the outcome:
   - `Returns<status>` for HTTP responses (`createReturns409...`)
   - `Rejects` for validation failures (`createRejectsNegativeSavingsGoal`)
+  - `Aborts` for concurrency conflicts (`saveAbortsWhenOptimisticLockFails`)
   - `Persists` for writes (`createPersistsExpenseAndReturns201`)
   - `Accepts` for valid boundary values (`createAcceptsSmallestPositiveAmount`)
 - One behavior per test.

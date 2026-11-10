@@ -6,6 +6,7 @@ public enum ErrorCode {
     EXPENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "Expense not found"),
     MONTHLY_BUDGET_NOT_FOUND(HttpStatus.NOT_FOUND, "Monthly budget not found"),
     MONTHLY_BUDGET_ALREADY_EXISTS(HttpStatus.CONFLICT, "Monthly budget already exists"),
+    MONTHLY_REFLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Monthly reflection not found"),
     INVALID_YEAR_MONTH(HttpStatus.BAD_REQUEST, "Invalid year/month"),
     EXPENSE_DATE_OUTSIDE_MONTH(HttpStatus.BAD_REQUEST, "Expense date is outside the given month"),
     MALFORMED_REQUEST_BODY(HttpStatus.BAD_REQUEST, "Malformed request body"),

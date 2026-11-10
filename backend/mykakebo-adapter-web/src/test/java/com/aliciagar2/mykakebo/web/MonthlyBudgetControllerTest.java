@@ -1,23 +1,28 @@
 package com.aliciagar2.mykakebo.web;
 
-import com.aliciagar2.mykakebo.domain.MonthlyBudgetEntity;
-import com.aliciagar2.mykakebo.repository.MonthlyBudgetRepository;
+import com.aliciagar2.mykakebo.application.MonthlyBudgetService;
+import com.aliciagar2.mykakebo.domain.MonthlyBudget;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.YearMonthInvalidException;
+import java.math.BigDecimal;
+import java.time.YearMonth;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.time.YearMonth;
-import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MonthlyBudgetController.class)
 class MonthlyBudgetControllerTest {
@@ -26,21 +31,13 @@ class MonthlyBudgetControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private MonthlyBudgetRepository monthlyBudgetRepository;
-
-    private static MonthlyBudgetEntity budget(Long id, YearMonth ym, String income, String fixedExpenses, String savingsGoal) {
-        return new MonthlyBudgetEntity(id, ym, new BigDecimal(income), new BigDecimal(fixedExpenses), new BigDecimal(savingsGoal));
-    }
+    private MonthlyBudgetService monthlyBudgetService;
 
     @Test
     void createAcceptsAllZeroAmounts() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 4);
-        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class))).thenAnswer(invocation -> {
-            MonthlyBudgetEntity e = invocation.getArgument(0);
-            return budget(8L, e.getYearMonth(), e.getIncome().toPlainString(),
-                    e.getFixedExpenses().toPlainString(), e.getSavingsGoal().toPlainString());
-        });
+        when(monthlyBudgetService.create(eq(2026), eq(4), any(), any(), any())).thenAnswer(invocation ->
+                new MonthlyBudget(8L, null, YearMonth.of(2026, 4), invocation.getArgument(2),
+                        invocation.getArgument(3), invocation.getArgument(4)));
 
         String body = """
                 {"income":0,"fixedExpenses":0,"savingsGoal":0}
@@ -55,13 +52,9 @@ class MonthlyBudgetControllerTest {
 
     @Test
     void createAllowsAvailableToSpendToGoNegativeWhenExpensesExceedIncome() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 5);
-        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class))).thenAnswer(invocation -> {
-            MonthlyBudgetEntity e = invocation.getArgument(0);
-            return budget(9L, e.getYearMonth(), e.getIncome().toPlainString(),
-                    e.getFixedExpenses().toPlainString(), e.getSavingsGoal().toPlainString());
-        });
+        when(monthlyBudgetService.create(eq(2026), eq(5), any(), any(), any())).thenAnswer(invocation ->
+                new MonthlyBudget(9L, null, YearMonth.of(2026, 5), invocation.getArgument(2),
+                        invocation.getArgument(3), invocation.getArgument(4)));
 
         String body = """
                 {"income":100.00,"fixedExpenses":80.00,"savingsGoal":50.00}
@@ -76,13 +69,9 @@ class MonthlyBudgetControllerTest {
 
     @Test
     void createPersistsBudgetAndReturns201() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 3);
-        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class))).thenAnswer(invocation -> {
-            MonthlyBudgetEntity e = invocation.getArgument(0);
-            return budget(7L, e.getYearMonth(), e.getIncome().toPlainString(),
-                    e.getFixedExpenses().toPlainString(), e.getSavingsGoal().toPlainString());
-        });
+        when(monthlyBudgetService.create(eq(2026), eq(3), any(), any(), any())).thenAnswer(invocation ->
+                new MonthlyBudget(7L, null, YearMonth.of(2026, 3), invocation.getArgument(2),
+                        invocation.getArgument(3), invocation.getArgument(4)));
 
         String body = """
                 {"income":2000.00,"fixedExpenses":800.00,"savingsGoal":200.00}
@@ -107,7 +96,7 @@ class MonthlyBudgetControllerTest {
                         .content(body))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(monthlyBudgetRepository);
+        verifyNoInteractions(monthlyBudgetService);
     }
 
     @Test
@@ -129,7 +118,7 @@ class MonthlyBudgetControllerTest {
                         .content(body))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(monthlyBudgetRepository);
+        verifyNoInteractions(monthlyBudgetService);
     }
 
     @Test
@@ -158,6 +147,10 @@ class MonthlyBudgetControllerTest {
 
     @Test
     void createReturns400ForInvalidMonth() throws Exception {
+        // The year/month rule itself is unit-tested in MonthlyBudgetServiceTest; this proves the 400 mapping.
+        when(monthlyBudgetService.create(anyInt(), anyInt(), any(), any(), any()))
+                .thenThrow(new YearMonthInvalidException("Invalid year/month: 2026/0"));
+
         String body = """
                 {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
                 """;
@@ -166,15 +159,12 @@ class MonthlyBudgetControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(monthlyBudgetRepository);
     }
 
     @Test
     void createReturns409WhenBudgetAlreadyExistsForMonth() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 1);
-        when(monthlyBudgetRepository.findByYearMonth(ym))
-                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
+        when(monthlyBudgetService.create(anyInt(), anyInt(), any(), any(), any()))
+                .thenThrow(new MonthlyBudgetAlreadyExistsException("Budget already set for 2026-01"));
 
         String body = """
                 {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
@@ -184,40 +174,21 @@ class MonthlyBudgetControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict());
-
-        verify(monthlyBudgetRepository, never()).save(any());
-    }
-
-    @Test
-    void createReturns409WhenConcurrentRequestWinsTheRace() throws Exception {
-        // findByYearMonth passes (no budget yet), but a concurrent request inserts first,
-        // so save() hits the year_month unique constraint. Should still surface as 409, not 500.
-        YearMonth ym = YearMonth.of(2026, 7);
-        when(monthlyBudgetRepository.findByYearMonth(ym)).thenReturn(Optional.empty());
-        when(monthlyBudgetRepository.save(any(MonthlyBudgetEntity.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
-
-        String body = """
-                {"income":1000.00,"fixedExpenses":200.00,"savingsGoal":100.00}
-                """;
-
-        mockMvc.perform(post("/api/months/2026/7/budget")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isConflict());
     }
 
     @Test
     void getReturns400ForInvalidMonth() throws Exception {
+        when(monthlyBudgetService.get(2026, 13))
+                .thenThrow(new YearMonthInvalidException("Invalid year/month: 2026/13"));
+
         mockMvc.perform(get("/api/months/2026/13/budget"))
                 .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(monthlyBudgetRepository);
     }
 
     @Test
     void getReturns404WhenNoBudgetSetForMonth() throws Exception {
-        when(monthlyBudgetRepository.findByYearMonth(YearMonth.of(2026, 6))).thenReturn(Optional.empty());
+        when(monthlyBudgetService.get(2026, 6))
+                .thenThrow(new MonthlyBudgetNotFoundException("No budget set for 2026-06"));
 
         mockMvc.perform(get("/api/months/2026/6/budget"))
                 .andExpect(status().isNotFound());
@@ -225,9 +196,8 @@ class MonthlyBudgetControllerTest {
 
     @Test
     void getReturnsBudgetWithCalculatedAvailableToSpend() throws Exception {
-        YearMonth ym = YearMonth.of(2026, 1);
-        when(monthlyBudgetRepository.findByYearMonth(ym))
-                .thenReturn(Optional.of(budget(1L, ym, "3000.00", "1500.00", "500.00")));
+        when(monthlyBudgetService.get(2026, 1)).thenReturn(new MonthlyBudget(1L, null, YearMonth.of(2026, 1),
+                new BigDecimal("3000.00"), new BigDecimal("1500.00"), new BigDecimal("500.00")));
 
         mockMvc.perform(get("/api/months/2026/1/budget"))
                 .andExpect(status().isOk())

@@ -104,6 +104,24 @@ class JpaExpenseRepositoryAdapterTest {
     }
 
     @Test
+    void saveAbortsWhenOptimisticLockFails() {
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
+        ExpenseEntity entity = entity(1L, KakeboCategory.SURVIVAL);
+        when(expenseRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(expenseRepository.save(entity)).thenThrow(new ObjectOptimisticLockingFailureException("", null));
+
+        assertThatThrownBy(() -> adapter.save(expense)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
+    }
+
+    @Test
+    void saveAbortsWhenRowNotFound() {
+        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
+        when(expenseRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adapter.save(expense)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
+    }
+
+    @Test
     void saveCreatesNewEntityWhenIdIsNull() {
         Expense newExpense = expense(null, KakeboCategory.SURVIVAL);
         ExpenseEntity newEntity = entity(null, KakeboCategory.SURVIVAL);
@@ -116,24 +134,6 @@ class JpaExpenseRepositoryAdapterTest {
         Expense result = adapter.save(newExpense);
 
         assertThat(result).isEqualTo(savedExpense);
-    }
-
-    @Test
-    void saveRejectsWhenOptimisticLockFails() {
-        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
-        ExpenseEntity entity = entity(1L, KakeboCategory.SURVIVAL);
-        when(expenseRepository.findById(1L)).thenReturn(Optional.of(entity));
-        when(expenseRepository.save(entity)).thenThrow(new ObjectOptimisticLockingFailureException("", null));
-
-        assertThatThrownBy(() -> adapter.save(expense)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
-    }
-
-    @Test
-    void saveRejectsWhenRowNotFound() {
-        Expense expense = expense(1L, KakeboCategory.SURVIVAL);
-        when(expenseRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> adapter.save(expense)).isInstanceOf(ExpenseConcurrentlyModifiedException.class);
     }
 
     @Test

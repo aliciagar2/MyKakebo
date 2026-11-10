@@ -4,6 +4,7 @@ import com.aliciagar2.mykakebo.domain.exceptions.ExpenseDateOutsideMonthExceptio
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyReflectionNotFoundException;
 import com.aliciagar2.mykakebo.domain.exceptions.YearMonthInvalidException;
 import com.aliciagar2.mykakebo.dto.ErrorResponse;
 import com.aliciagar2.mykakebo.dto.FieldViolation;
@@ -41,6 +42,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(MonthlyBudgetNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleMonthlyBudgetNotFoundException() {
         return buildResponse(ErrorCode.MONTHLY_BUDGET_NOT_FOUND);
+    }
+
+    @ExceptionHandler(MonthlyReflectionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMonthlyReflectionNotFound() {
+        return buildResponse(ErrorCode.MONTHLY_REFLECTION_NOT_FOUND);
     }
 
     @ExceptionHandler(YearMonthInvalidException.class)
