@@ -16,6 +16,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MonthlyBudgetServiceTest {
 
+    private static MonthlyBudget create(MonthlyBudgetService service, int year, int month) {
+        return service.create(year, month, new BigDecimal("2000.00"), new BigDecimal("800.00"),
+                new BigDecimal("200.00"));
+    }
+
     @Test
     void createAbortsWhenConcurrentRequestWinsTheRace() {
         MonthlyBudgetService service = new MonthlyBudgetService(new RaceConditionPort());
@@ -74,11 +79,6 @@ class MonthlyBudgetServiceTest {
         MonthlyBudget created = create(service, 2026, 1);
 
         assertThat(service.get(2026, 1)).isEqualTo(created);
-    }
-
-    private static MonthlyBudget create(MonthlyBudgetService service, int year, int month) {
-        return service.create(year, month, new BigDecimal("2000.00"), new BigDecimal("800.00"),
-                new BigDecimal("200.00"));
     }
 
     private static MonthlyBudgetService newService() {

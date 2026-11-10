@@ -48,6 +48,15 @@ class MonthlyReflectionServiceTest {
                 .containsExactly(YearMonth.of(2026, 1), YearMonth.of(2026, 2), YearMonth.of(2026, 3));
     }
 
+    private static MonthlyReflectionService newService() {
+        return new MonthlyReflectionService(new InMemoryMonthlyReflectionRepositoryAdapter());
+    }
+
+    private static MonthlyReflection reflection(int year, int month) {
+        return new MonthlyReflection(null, null, YearMonth.of(year, month), new BigDecimal("2000.00"),
+                new BigDecimal("500.00"), new BigDecimal("700.00"), null);
+    }
+
     @Test
     void savePersistsReflectionAndAssignsId() {
         MonthlyReflectionService service = newService();
@@ -56,14 +65,5 @@ class MonthlyReflectionServiceTest {
 
         assertThat(saved.id()).isNotNull();
         assertThat(saved.moneySpent()).isEqualTo(new BigDecimal("700.00"));
-    }
-
-    private static MonthlyReflectionService newService() {
-        return new MonthlyReflectionService(new InMemoryMonthlyReflectionRepositoryAdapter());
-    }
-
-    private static MonthlyReflection reflection(int year, int month) {
-        return new MonthlyReflection(null, null, YearMonth.of(year, month), new BigDecimal("2000.00"),
-                new BigDecimal("500.00"), new BigDecimal("700.00"), null);
     }
 }
