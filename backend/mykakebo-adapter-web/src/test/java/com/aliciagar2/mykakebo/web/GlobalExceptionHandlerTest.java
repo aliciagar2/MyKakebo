@@ -3,6 +3,7 @@ package com.aliciagar2.mykakebo.web;
 import com.aliciagar2.mykakebo.domain.exceptions.ExpenseNotFoundException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetAlreadyExistsException;
 import com.aliciagar2.mykakebo.domain.exceptions.MonthlyBudgetNotFoundException;
+import com.aliciagar2.mykakebo.domain.exceptions.MonthlyReflectionNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void monthlyReflectionNotFoundReturns404WithErrorBody() throws Exception {
+        mockMvc.perform(get("/test/reflection-not-found"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MONTHLY_REFLECTION_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Monthly reflection not found"));
+    }
+
+    @Test
     void unexpectedExceptionReturns500WithoutLeakingDetails() throws Exception {
         mockMvc.perform(get("/test/crash"))
                 .andExpect(status().isInternalServerError())
@@ -100,6 +109,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/expense-not-found")
         void expenseNotFound() {
             throw new ExpenseNotFoundException("Expense not found");
+        }
+
+        @GetMapping("/reflection-not-found")
+        void reflectionNotFound() {
+            throw new MonthlyReflectionNotFoundException("Reflection not found");
         }
 
         @PostMapping("/validated")
