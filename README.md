@@ -21,9 +21,8 @@ The repository contains the domain/aggregation slice plus a Spring Boot applicat
 | Expense REST endpoints (list/create/update/delete) | Implemented |
 | Monthly budget REST endpoints (create/read) | Implemented |
 | Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`) | Implemented |
-| Hexagonal architecture (Expense slice): port, service, JPA + in-memory adapters, 5-module reactor | Implemented |
-| ArchUnit boundary enforcement | Planned     |
-| Budget/Reflection slices converted to ports and adapters | Planned     |
+| Hexagonal architecture (Expense, Budget, and Reflection slices): ports, services, JPA + in-memory adapters, 5-module reactor | Implemented |
+| Module boundaries enforced in the build (ArchUnit, Maven enforcer) | Implemented |
 | Summary, reflection, and authentication endpoints | Planned     |
 | React + TypeScript frontend             | Planned     |
 | CI: GitHub Actions (tests + build), CodeQL, Dependabot | Implemented |
@@ -194,7 +193,7 @@ Docker Compose automatically loads `.env` from the same directory as `docker-com
 
 ### REST API
 
-`ExpenseController` and `MonthlyBudgetController` expose the first persistence-backed endpoints, operating on the JPA entities through the Spring Data repositories described above. Requests and responses use dedicated records in `dto/` (`ExpenseRequest`/`ExpenseResponse`, `MonthlyBudgetRequest`/`MonthlyBudgetResponse`) rather than exposing entities directly, with Jakarta Bean Validation annotations enforced via `@Valid`:
+`ExpenseController` and `MonthlyBudgetController` expose the first persistence-backed endpoints. Each controller calls a framework-free service, and the service reaches the Spring Data repositories described above through a port (see [Backend architecture](#backend-architecture-ports-and-adapters)). Requests and responses use dedicated records in `dto/` (`ExpenseRequest`/`ExpenseResponse`, `MonthlyBudgetRequest`/`MonthlyBudgetResponse`) rather than exposing entities directly, with Jakarta Bean Validation annotations enforced via `@Valid`:
 
 ```
 GET    /api/months/{year}/{month}/expenses?category=   -> list expenses in that month, optionally filtered by category
@@ -216,13 +215,13 @@ Every error response — validation failures, not-found/conflict cases, and anyt
 { "code": "EXPENSE_NOT_FOUND", "message": "Expense not found", "violations": null }
 ```
 
-`ErrorCode` is the single source of truth mapping each error to its HTTP status and default message (`EXPENSE_NOT_FOUND` → 404, `MONTHLY_BUDGET_ALREADY_EXISTS` → 409, `INVALID_YEAR_MONTH`/`EXPENSE_DATE_OUTSIDE_MONTH`/`MALFORMED_REQUEST_BODY`/`INVALID_REQUEST_PARAMETER`/`VALIDATION_ERROR`/`REQUEST_ERROR` → 400, `INTERNAL_SERVER_ERROR` → 500). `@ExceptionHandler` methods translate each domain exception (`ExpenseNotFoundException`, `MonthlyBudgetNotFoundException`, `MonthlyBudgetAlreadyExistsException`, `YearMonthInvalidException`, `ExpenseDateOutsideMonthException`) to its `ErrorCode`. Bean Validation failures (`MethodArgumentNotValidException`) populate `violations` with one `FieldViolation(field, message)` per rejected field. Any other exception Spring MVC would otherwise handle internally (malformed JSON, a 405 on an unsupported method, etc.) falls back to the generic `REQUEST_ERROR`/`INTERNAL_SERVER_ERROR` codes rather than leaking the raw exception message or an ad hoc status name — `GlobalExceptionHandler` never reports more detail than the matched `ErrorCode` provides.
+`ErrorCode` is the single source of truth mapping each error to its HTTP status and default message (`EXPENSE_NOT_FOUND`/`MONTHLY_BUDGET_NOT_FOUND`/`MONTHLY_REFLECTION_NOT_FOUND` → 404, `MONTHLY_BUDGET_ALREADY_EXISTS` → 409, `INVALID_YEAR_MONTH`/`EXPENSE_DATE_OUTSIDE_MONTH`/`MALFORMED_REQUEST_BODY`/`INVALID_REQUEST_PARAMETER`/`VALIDATION_ERROR`/`REQUEST_ERROR` → 400, `INTERNAL_SERVER_ERROR` → 500). `@ExceptionHandler` methods translate each domain exception (`ExpenseNotFoundException`, `MonthlyBudgetNotFoundException`, `MonthlyBudgetAlreadyExistsException`, `MonthlyReflectionNotFoundException`, `YearMonthInvalidException`, `ExpenseDateOutsideMonthException`) to its `ErrorCode`. Bean Validation failures (`MethodArgumentNotValidException`) populate `violations` with one `FieldViolation(field, message)` per rejected field. Any other exception Spring MVC would otherwise handle internally (malformed JSON, a 405 on an unsupported method, etc.) falls back to the generic `REQUEST_ERROR`/`INTERNAL_SERVER_ERROR` codes rather than leaking the raw exception message or an ad hoc status name — `GlobalExceptionHandler` never reports more detail than the matched `ErrorCode` provides.
 
 The `{id}` path on `PUT`/`DELETE` for expenses sits under the same `/api/months/{year}/{month}/expenses` class-level mapping as the collection endpoints, so a request still needs some `{year}`/`{month}` segment to match the route even though those two update/delete operations look the entity up by `id` alone.
 
-`ExpenseEntity` carries a `@Version` column, so `PUT` also returns `404` (instead of a misleading `200`) if another request deletes the expense between the lookup and the save — Hibernate's optimistic-lock check turns that race into a real `ObjectOptimisticLockingFailureException`, which the controller translates the same way as a missing id. Similarly, `MonthlyBudgetController`'s `POST` first checks for an existing budget to return a fast `409`, but also catches the database's unique-constraint violation on `save()` as a safety net, so a concurrent request racing past that check still gets `409` instead of a raw `500`.
+`ExpenseEntity` carries a `@Version` column, so `PUT` also returns `404` (instead of a misleading `200`) if another request deletes the expense between the lookup and the save — Hibernate's optimistic-lock check turns that race into a real `ObjectOptimisticLockingFailureException`, which `JpaExpenseRepositoryAdapter` and `ExpenseService` translate the same way as a missing id. Similarly, `MonthlyBudgetService` first looks for an existing budget to return a fast `409`. `JpaMonthlyBudgetRepositoryAdapter` also catches the database's unique-constraint violation on `save()`, so a concurrent request that gets past that lookup still gets `409` instead of a raw `500`.
 
-`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked repository: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params, invalid `{year}`/`{month}`, date outside the URL's month), and failure cases (missing/invalid fields, excess decimal precision, malformed JSON, concurrent-update and concurrent-create races) — all asserted against HTTP status and response body. `GlobalExceptionHandlerTest` exercises the handler directly, against a throwaway `@WebMvcTest`-scoped controller, confirming each exception maps to its documented `ErrorCode` and that neither the 500 fallback nor the 405 fallback leaks the underlying exception message.
+`ExpenseControllerTest` and `MonthlyBudgetControllerTest` cover both controllers with `@WebMvcTest` and a mocked service: happy-path CRUD, edge cases (empty results, boundary amounts, max-length notes, zero/negative budget math), corner cases (404 on missing entities, 409 on duplicate budgets, invalid enum query params, invalid `{year}`/`{month}`, date outside the URL's month), and failure cases (missing/invalid fields, excess decimal precision, malformed JSON, the concurrent-update race) — all asserted against HTTP status and response body. `GlobalExceptionHandlerTest` exercises the handler directly, against a throwaway `@WebMvcTest`-scoped controller, confirming each exception maps to its documented `ErrorCode` and that neither the 500 fallback nor the 405 fallback leaks the underlying exception message.
 
 ### Dockerfile
 
@@ -235,17 +234,17 @@ The image listens on port `8080`.
 
 ## Backend architecture: ports and adapters
 
-The hexagonal architecture conversion turned the Expense slice into a ports-and-adapters design. This split `backend/` into a five-module Maven reactor, proving the pattern on one slice before the Budget and Reflection slices follow later.
+The hexagonal architecture conversion turned the Expense, Budget, and Reflection slices into a ports-and-adapters design. This split `backend/` into a five-module Maven reactor. The Expense slice proved the pattern first, and the Budget and Reflection slices followed with the same shape.
 
 ```mermaid
 flowchart LR
     subgraph adapters["Adapters: depend on domain, never the reverse"]
-        web["mykakebo-adapter-web<br/>ExpenseController"]
-        jpa["mykakebo-adapter-persistence-jpa<br/>JpaExpenseRepositoryAdapter"]
-        memory["mykakebo-adapter-persistence-memory<br/>InMemoryExpenseRepositoryAdapter<br/>(test only)"]
+        web["mykakebo-adapter-web<br/>ExpenseController, MonthlyBudgetController"]
+        jpa["mykakebo-adapter-persistence-jpa<br/>JpaExpenseRepositoryAdapter<br/>JpaMonthlyBudgetRepositoryAdapter<br/>JpaMonthlyReflectionRepositoryAdapter"]
+        memory["mykakebo-adapter-persistence-memory<br/>InMemory adapters for the three ports<br/>(test only)"]
     end
-    domain["mykakebo-domain<br/>Expense, ExpenseRepositoryPort, ExpenseService<br/>no Spring or JPA on its classpath"]
-    bootstrap["mykakebo-bootstrap<br/>MykakeboApplication<br/>MonthlyBudget/MonthlyReflection (not yet converted)<br/>Flyway migrations"]
+    domain["mykakebo-domain<br/>domain records, repository ports, services<br/>no Spring or JPA on its classpath"]
+    bootstrap["mykakebo-bootstrap<br/>MykakeboApplication<br/>service bean wiring<br/>Flyway migrations"]
 
     web --> domain
     jpa --> domain
@@ -263,18 +262,29 @@ flowchart LR
 
 `InMemoryExpenseRepositoryAdapter`, in `mykakebo-adapter-persistence-memory`, is a second adapter for the same port. A map backs it, with no database. `ExpenseServiceTest` uses it to run the business rules with no Spring context. `mykakebo-bootstrap` never depends on this module, so the real application only ever sees one adapter bean.
 
+The Budget slice has the same parts: `MonthlyBudgetRepositoryPort`, `MonthlyBudgetService`, `JpaMonthlyBudgetRepositoryAdapter`, `InMemoryMonthlyBudgetRepositoryAdapter`, and `MonthlyBudgetServiceConfiguration`. `MonthlyBudgetService` holds the year and month parsing and the rule of one budget for each month. `JpaMonthlyBudgetRepositoryAdapter` turns Spring's `DataIntegrityViolationException` into `MonthlyBudgetAlreadyExistsException`.
+
+The Reflection slice has a port, a service, and both adapters too. It has no controller yet, so no REST endpoint calls `MonthlyReflectionService`.
+
+The build enforces these boundaries in three places:
+
+- `DomainPurityArchTest`, in `mykakebo-domain`, fails if a class in that module uses Spring, Jakarta, or Hibernate.
+- `HexagonalArchitectureTest`, in `mykakebo-bootstrap`, fails if the `application` package uses an adapter or a framework, or if the web adapter uses persistence classes.
+- A `maven-enforcer-plugin` rule in `mykakebo-bootstrap/pom.xml` fails the build if `mykakebo-adapter-persistence-memory` becomes a dependency of the application.
+
 Done:
 
-- The Expense slice is fully converted: port, service, JPA adapter, in-memory test adapter, and a rewired controller.
+- The Expense, Budget, and Reflection slices are converted: port, service, JPA adapter, and in-memory test adapter. The two controllers call the services.
 - `mykakebo-bootstrap` produces the only executable jar.
 - `./mvnw verify` and `backend/Dockerfile` already match the new five-module layout.
 - `CLAUDE.md`'s naming table has rows for Port, Adapter, the hexagonal use-case Service, and Configuration.
-- Dedicated unit tests for every piece of logic the conversion introduced: `ExpenseEntityMapper`, `JpaExpenseRepositoryAdapter`, and `InMemoryExpenseRepositoryAdapter` (see [Run the tests](#run-the-tests)).
+- Dedicated unit tests for every piece of logic the conversion introduced: the services, the entity mappers, the JPA adapters, and `InMemoryExpenseRepositoryAdapter` (see [Run the tests](#run-the-tests)).
+- ArchUnit rules and a Maven enforcer rule enforce the module boundaries in CI, as part of `./mvnw verify`.
 
 Pending:
 
-- `MonthlyBudget` and `MonthlyReflection` still use the old repository-direct style. Their conversion is planned as separate work.
-- ArchUnit rules to enforce the module boundaries in CI, not only through Maven's dependency structure.
+- `MonthlyReflection` has no REST endpoint. `SummaryService` is not wired to the Reflection port yet.
+- The two in-memory adapters for Budget and Reflection have no dedicated tests. The service tests exercise them.
 
 ## Expense classes: before and after the hexagonal conversion
 
@@ -421,16 +431,19 @@ cd backend
 ./mvnw test
 ```
 
-Expected result: `Tests run: 124, Failures: 0, Errors: 0`.
+Expected result: 190 tests in total across the five modules, with `Failures: 0, Errors: 0` in each module.
 
 - `SummaryServiceTest` (10 tests) covers category aggregation with empty, single-category, and multi-category inputs; remaining balances; numeric overspending checks; reflection totals and warnings; and both valid and invalid budget allocations.
 - `MykakeboApplicationTests` (1 test) confirms the Spring application context loads.
 - `ExpenseRepositoryTest` (4 tests), `MonthlyBudgetRepositoryTest` (3 tests), and `MonthlyReflectionRepositoryTest` (3 tests) exercise the Spring Data repositories' custom query methods against the H2 in-memory database, each wrapped in `@DataJpaTest`'s automatic per-test transaction rollback. `ExpenseRepositoryTest` also asserts the `@Version`-backed optimistic-locking contract directly: saving a detached `ExpenseEntity` whose row was deleted out from under it throws `ObjectOptimisticLockingFailureException`.
-- `ExpenseControllerTest` (23 tests) and `MonthlyBudgetControllerTest` (14 tests) use `@WebMvcTest` with a mocked repository to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered, including the invalid-month, date-outside-month, concurrent-update, and concurrent-create races.
-- `GlobalExceptionHandlerTest` (6 tests) drives `GlobalExceptionHandler` directly against a dedicated test controller, covering every mapped exception's status/`ErrorCode`, the field-violation body for a failed `@Valid` request, and that the 500 and 405 fallbacks never leak the original exception message.
+- `ExpenseControllerTest` (23 tests) and `MonthlyBudgetControllerTest` (13 tests) use `@WebMvcTest` with a mocked service to exercise the REST layer in isolation — see [REST API](#rest-api) for the breakdown of happy-path, edge, corner, and failure cases covered, including the invalid-month, date-outside-month, and concurrent-update cases.
+- `GlobalExceptionHandlerTest` (7 tests) drives `GlobalExceptionHandler` directly against a dedicated test controller, covering every mapped exception's status/`ErrorCode`, the field-violation body for a failed `@Valid` request, and that the 500 and 405 fallbacks never leak the original exception message.
 - `ExpenseEntityMapperTest` (5 tests) covers the `Expense`↔`ExpenseEntity` mapping, including that `monthYear` is derived from the expense date and that `applyTo` never touches the entity's id.
 - `JpaExpenseRepositoryAdapterTest` (10 tests) mocks `ExpenseRepository` and `ExpenseEntityMapper` to exercise `JpaExpenseRepositoryAdapter` in isolation: create vs. update branching on `save`, and both ways a concurrent change surfaces as `ExpenseConcurrentlyModifiedException` (a deleted row, or `ObjectOptimisticLockingFailureException` from the database).
 - `InMemoryExpenseRepositoryAdapterTest` (10 tests) covers the same adapter contract against the in-memory map directly: sequential id assignment, the same concurrency exception, and inclusive date-range/category filtering.
+- `ExpenseServiceTest` (12 tests), `MonthlyBudgetServiceTest` (7 tests), and `MonthlyReflectionServiceTest` (5 tests) run the services against the in-memory adapters, with no Spring context. `MonthlyBudgetServiceTest` includes the race between two requests that create a budget for the same month.
+- `MonthlyBudgetEntityMapperTest` (3 tests), `MonthlyReflectionEntityMapperTest` (3 tests), `JpaMonthlyBudgetRepositoryAdapterTest` (4 tests), and `JpaMonthlyReflectionRepositoryAdapterTest` (4 tests) cover the Budget and Reflection JPA adapters with mocked repositories. `JpaMonthlyBudgetRepositoryAdapterTest` asserts that a unique-constraint violation becomes `MonthlyBudgetAlreadyExistsException`.
+- `DomainPurityArchTest` (1 test) and `HexagonalArchitectureTest` (2 tests) are the ArchUnit rules described in [Backend architecture](#backend-architecture-ports-and-adapters).
 - `BudgetAllocationTest` (3 tests), `MonthlyBudgetTest` (2 tests), and `YearMonthConverterTest` (4 tests) cover the domain classes with real logic: the compact constructor's percentage-sum validation, the `availableToSpend` calculation, and the JPA `YearMonth`↔`String` conversion.
 - `ExpenseRequestTest` (6 tests) and `MonthlyBudgetRequestTest` (8 tests) assert that each Bean Validation constraint on the two request DTOs actually rejects invalid input, not only that the annotations are present.
 
@@ -489,7 +502,7 @@ Expected response: `HTTP/1.1 200`, body `OK`.
 3. ~~Expense and budget REST endpoints~~ Done.
 4. ~~CI (tests, CodeQL, Dependabot), k3s manifest for the API, Java 21 toolchain~~ Done.
 5. ~~Consistent JSON error responses (`GlobalExceptionHandler`, `ErrorCode`)~~ Done.
-6. ~~Hexagonal refactor for the Expense slice: port, service, JPA and in-memory adapters~~ Done, see [Backend architecture](#backend-architecture-ports-and-adapters). Still pending: the same refactor for Budget/Reflection, and boundaries enforced by ArchUnit.
+6. ~~Hexagonal refactor for the Expense, Budget, and Reflection slices: ports, services, JPA and in-memory adapters, boundaries enforced by ArchUnit~~ Done, see [Backend architecture](#backend-architecture-ports-and-adapters).
 7. Multi-user households with roles (owner, editor, viewer, guest), Spring Security + JWT.
 8. Summary and reflection endpoints, CORS.
 9. PostgreSQL in k3s, Testcontainers, JaCoCo coverage gate.
